@@ -870,7 +870,6 @@ class Wrapper {
     WrappedObject(v8::Local<v8::Object> obj, T* ptr)
         : handle(v8::Isolate::GetCurrent(), obj),
           ptr(ptr) {
-      handle.MarkIndependent();
       handle.SetWeak(this, &deleteCallback, v8::WeakCallbackType::kParameter);
     }
 
