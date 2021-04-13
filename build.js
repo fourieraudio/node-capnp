@@ -92,8 +92,14 @@ function build() {
 			return process.exit(err);
 		}
 	});
-	sp.stdout.pipe(process.stdout);
-	sp.stderr.pipe(process.stderr);
+
+  if (sp.stdout) {
+    sp.stdout.pipe(process.stdout);
+  }
+
+  if (sp.stderr) {
+    sp.stderr.pipe(process.stderr);
+  }
 }
 
 // Move it to expected location
