@@ -102,7 +102,9 @@ function afterBuild() {
 	var installPath = path.join(__dirname, 'bin', modPath, 'capnp.node');
 
 	try {
-		fs.mkdirSync(path.join(__dirname, 'bin', modPath));
+		fs.mkdirSync(path.join(__dirname, 'bin', modPath), {
+      recursive: true,
+    });
 	} catch (ex) {}
 
 	try {
@@ -111,7 +113,12 @@ function afterBuild() {
 		console.error('Build succeeded but target not found');
 		process.exit(1);
 	}
-	fs.renameSync(targetPath, installPath);
-	console.log('Installed in `'+ installPath+ '`');
+
+  try {
+    fs.renameSync(targetPath, installPath);
+    console.log('Installed in `'+ installPath+ '`');
+  } catch (ex) {
+    console.error(`All went wrong when we tried to move the target: ${ex}`);
+  }
 }
 

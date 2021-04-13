@@ -22,29 +22,31 @@
 var path = require("path");
 var fs = require("fs");
 
-// Look for binary for this platform
-var v8 = "v8-"+ /[0-9]+\.[0-9]+/.exec(process.versions.v8)[0];
-var modPath = path.join(
-    __dirname, "../../bin", process.platform+ "-" + process.arch + "-" + v8,
-    "capnp");
-try {
-  fs.statSync(modPath + ".node");
-} catch (ex) {
-  // No binary!
-
-  // Also try just "capnp.node". (Mainly for use when building with Ekam rather
-  // than npm.)
-  modPath = "./capnp.node";
+if (false) {
+  // Look for binary for this platform
+  var v8 = "v8-"+ /[0-9]+\.[0-9]+/.exec(process.versions.v8)[0];
+  var modPath = path.join(
+      __dirname, "../../bin", process.platform+ "-" + process.arch + "-" + v8,
+      "capnp");
   try {
-    fs.statSync(path.join(__dirname, "capnp.node"));
+    fs.statSync(modPath + ".node");
   } catch (ex) {
-    // Give up.
-    throw new Error(
-        "`capnp.node` is missing. Try reinstalling `node-capnp`?");
+    // No binary!
+
+    // Also try just "capnp.node". (Mainly for use when building with Ekam rather
+    // than npm.)
+    modPath = "./capnp.node";
+    try {
+      fs.statSync(path.join(__dirname, "capnp.node"));
+    } catch (ex) {
+      // Give up.
+      throw new Error(
+          "`capnp.node` is missing. Try reinstalling `node-capnp`?");
+    }
   }
 }
 
-var v8capnp = require(modPath);
+var v8capnp = require("../../bin/linux-x64-v8-8.4/capnp.node");
 
 var importPath = [];
 for (var i in module.paths) {
@@ -62,7 +64,7 @@ if ("NODE_PATH" in process.env) {
 importPath.push("/usr/local/include");
 importPath.push("/usr/include");
 
-exports.import = function (filename) {
+exports.importFile = function (filename) {
   return v8capnp.import(filename, filename, importPath);
 }
 
@@ -76,8 +78,10 @@ exports.importSystem = function (filename) {
   throw new Error("Cap'n Proto schema not found in module path: " + filename);
 }
 
-require.extensions[".capnp"] = function (module, filename) {
-  module.exports = v8capnp.import(filename, filename, importPath);
+if (false) {
+  require.extensions[".capnp"] = function (module, filename) {
+    module.exports = v8capnp.import(filename, filename, importPath);
+  }
 }
 
 function makeRemotePromise(promise, pipeline) {
