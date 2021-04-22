@@ -46,7 +46,9 @@ if (false) {
   }
 }
 
-var v8capnp = require("../../bin/linux-x64-v8-8.4/capnp.node");
+var v8capnp = process.platform == "darwin"
+            ? require("../../bin/darwin-x64-v8.8.4/capnp.node")
+            : require("../../bin/linux-x64-v8-8.4/capnp.node");
 
 var importPath = [];
 for (var i in module.paths) {
