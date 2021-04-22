@@ -21,8 +21,11 @@
 
 var path = require("path");
 var fs = require("fs");
+var v8capnp;
 
-if (false) {
+if (typeof CAPNP_NO_DYNAMIC_REQUIRE !== "undefined" && CAPNP_NO_DYNAMIC_REQUIRE) {
+  v8capnp = require("./capnp.node");
+} else {
   // Look for binary for this platform
   var v8 = "v8-"+ /[0-9]+\.[0-9]+/.exec(process.versions.v8)[0];
   var modPath = path.join(
@@ -44,11 +47,9 @@ if (false) {
           "`capnp.node` is missing. Try reinstalling `node-capnp`?");
     }
   }
-}
 
-var v8capnp = process.platform == "darwin"
-            ? require("../../bin/darwin-x64-v8.8.4/capnp.node")
-            : require("../../bin/linux-x64-v8-8.4/capnp.node");
+  v8capnp = require(modPath);
+}
 
 var importPath = [];
 for (var i in module.paths) {
