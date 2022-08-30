@@ -1,0 +1,22 @@
+name: CI - Test Build
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  BuildLinux:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: sudo ./install-deps.sh
+
+      - name: Test build module (linux-x64)
+        run: npm i && file bin/linux-x64/capnp.node
+
+      - name: Run tests
+        run: npm test
+
+# vim: set nospell:

@@ -31,7 +31,6 @@ var force = false, debug = false;
 var
 	arch = process.arch,
 	platform = process.platform,
-	v8 = /[0-9]+\.[0-9]+/.exec(process.versions.v8)[0],
   environment = { ...process.env };
 
 var patchLibPath = false, patchTool = null;
@@ -77,8 +76,10 @@ if (!{ia32: true, x64: true, arm: true}.hasOwnProperty(arch)) {
 	process.exit(1);
 }
 
-// Test for pre-built library
-var modPath = platform+ '-'+ arch+ '-v8-'+ v8;
+// Test for pre-built library. We do not use the v8 version in the target dir
+// as the v8 version we are running with currently may not be the same as that
+// we are building for.
+var modPath = platform + '-' + arch;
 var command = process.platform === 'win32' ? 'node-gyp.cmd' : 'node-gyp';
 
 if (!force) {

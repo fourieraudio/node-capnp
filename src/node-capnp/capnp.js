@@ -27,9 +27,8 @@ if (typeof CAPNP_NO_DYNAMIC_REQUIRE !== "undefined" && CAPNP_NO_DYNAMIC_REQUIRE)
   v8capnp = require("./capnp.node");
 } else {
   // Look for binary for this platform
-  var v8 = "v8-"+ /[0-9]+\.[0-9]+/.exec(process.versions.v8)[0];
   var modPath = path.join(
-      __dirname, "../../bin", process.platform+ "-" + process.arch + "-" + v8,
+      __dirname, "../../bin", process.platform + "-" + process.arch,
       "capnp");
   try {
     fs.statSync(modPath + ".node");
@@ -38,9 +37,8 @@ if (typeof CAPNP_NO_DYNAMIC_REQUIRE !== "undefined" && CAPNP_NO_DYNAMIC_REQUIRE)
 
     // Also try just "capnp.node". (Mainly for use when building with Ekam rather
     // than npm.)
-    modPath = "./capnp.node";
     try {
-      fs.statSync(path.join(__dirname, "capnp.node"));
+      fs.statSync(modPath = path.join(__dirname, "capnp.node"));
     } catch (ex) {
       // Give up.
       throw new Error(
