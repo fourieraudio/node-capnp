@@ -42,9 +42,7 @@ try {
   goldenPackedFlatBinary = fs.readFileSync("src/node-capnp/testdata/packedflat");
 }
 
-var test = require("./test.capnp");
-assert(test === capnp.import(__dirname + "/test.capnp"));
-assert(test === require("./test"));
+let test = capnp.importFile(__dirname + "/test.capnp");
 
 assert("namespace" in capnp.importSystem("capnp/c++.capnp"));
 
