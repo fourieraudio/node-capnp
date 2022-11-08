@@ -81,7 +81,7 @@ require.extensions[".capnp"] = function (module, filename) {
 }
 
 function makeRemotePromise(promise, pipeline) {
-  for (member in pipeline) {
+  for (var member in pipeline) {
     promise[member] = pipeline[member];
   }
 
