@@ -86,7 +86,7 @@ if (false) {
 }
 
 function makeRemotePromise(promise, pipeline) {
-  for (member in pipeline) {
+  for (var member in pipeline) {
     promise[member] = pipeline[member];
   }
 
