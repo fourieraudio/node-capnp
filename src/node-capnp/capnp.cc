@@ -26,6 +26,22 @@
 // End hack.
 #endif
 
+#ifdef _WIN32
+#include <winsock2.h>
+#include <windows.h>
+#endif
+
+#ifdef _WIN32
+#define IS_SOCKET_VALID(s) ((s) != INVALID_SOCKET)
+#define CLOSE_SOCKET(s) closesocket(s)
+#define GET_LAST_SOCKET_ERROR() (WSAGetLastError())
+#else
+typedef int SOCKET;
+#define IS_SOCKET_VALID(s) ((s) >= 0)
+#define CLOSE_SOCKET(s) close(s)
+#define GET_LAST_SOCKET_ERROR() (errno)
+#endif
+
 #include <node.h>
 #include <node_buffer.h>
 #include <nan.h>
@@ -37,8 +53,10 @@
 #include <kj/async-io.h>
 #include <kj/io.h>
 #include <kj/vector.h>
+#ifndef _WIN32
 #include <errno.h>
 #include <unistd.h>
+#endif
 #include <capnp/rpc-twoparty.h>
 #include <capnp/rpc.capnp.h>
 #include <capnp/serialize.h>
@@ -47,11 +65,114 @@
 #include <inttypes.h>
 #include <set>
 #include <stdlib.h>
+#include <stddef.h>
+#ifdef _WIN32
+ssize_t write(SOCKET fd, const void* buf, size_t len) {
+  // Documented as exactly equivalent to `write`, in `man send`.
+  return ::send(fd, (const char*) buf, len, 0);
+}
+
+ssize_t read(SOCKET fd, void* buf, size_t len) {
+  // Documented as *nearly* equivalent to `read`, in `man recv`.
+  return ::recv(fd, (char*) buf, len, 0);
+}
+
+struct iovec {
+    const void*  iov_base;
+    size_t       iov_len;
+};
+
+int writev(SOCKET fd, const struct iovec* vecs, int count) {
+  int total = 0;
+  
+  for ( ; count > 0; count--, vecs++ ) {
+    const char* buf = (const char*) vecs->iov_base;
+    int len = (int) vecs->iov_len;
+    
+    while (len > 0) {
+      int ret = write(fd, buf, len);
+
+      if (ret < 0) {
+        if (total == 0) {
+          total = -1;
+        }
+
+        goto end;
+      }
+
+      if (ret == 0) {
+        goto end;
+      }
+
+      total += ret;
+      buf   += ret;
+      len   -= ret;
+    }
+  }
+  
+  end:    
+    return total;
+}
+#else
 #include <sys/uio.h>
+#endif
 
 #include <typeinfo>
 #include <typeindex>
+#ifdef _WIN32
+namespace abi {
+  char* __cxa_demangle(
+    const char* mangledName,
+		char* outputBuffer,
+		size_t* length,
+		int* status
+	) {
+    // This call only seems to be used for debugging, so we just return the mangled name unchanged.
+    // Also, `outputBuffer` and `length` are both always `nullptr`.
+    
+    *status = 0;
+
+    size_t mangledLength = strlen(mangledName);
+    char* storage = (char*) malloc(mangledLength + 1);
+    strcpy_s(storage, mangledLength + 1, mangledName);
+
+    return storage;
+  }
+}
+#else
 #include <cxxabi.h>
+#endif
+
+#ifdef _WIN32
+
+// Argument to `shutdown`
+#define SHUT_WR SD_SEND
+
+#define FA_EWOULDBLOCK WSAEWOULDBLOCK
+#define FA_EINTR WSAEINTR
+#define FA_ENETDOWN WSAENETDOWN
+#define FA_EHOSTDOWN WSAEHOSTDOWN
+#define FA_EHOSTUNREACH WSAEHOSTUNREACH
+#define FA_ENETUNREACH WSAENETUNREACH
+#define FA_ECONNABORTED WSAECONNABORTED
+#define FA_ETIMEDOUT WSAETIMEDOUT
+#define FA_EINPROGRESS WSAEINPROGRESS
+
+#else
+
+#define FA_EWOULDBLOCK EWOULDBLOCK
+#define FA_EINTR EINTR
+#define FA_ENETDOWN ENETDOWN
+#define FA_EHOSTDOWN EHOSTDOWN
+#define FA_EHOSTUNREACH EHOSTUNREACH
+#define FA_ENETUNREACH ENETUNREACH
+#define FA_ECONNABORTED ECONNABORTED
+#define FA_ETIMEDOUT ETIMEDOUT
+#define FA_EINPROGRESS EINPROGRESS
+
+#endif
+
+#define FA_EAGAIN FA_EWOULDBLOCK
 
 #ifdef SANDSTORM_BUILD
 #include <sodium/crypto_stream_chacha20.h>
@@ -201,23 +322,50 @@ private:
   }
 };
 
-static void setNonblocking(int fd) {
+static void setNonblocking(SOCKET fd) {
+#ifdef _WIN32
+
+  u_long newSetting = 1;
+  ioctlsocket(fd, FIONBIO, &newSetting);
+
+#else
+
   int flags;
   KJ_SYSCALL(flags = fcntl(fd, F_GETFL));
   if ((flags & O_NONBLOCK) == 0) {
     KJ_SYSCALL(fcntl(fd, F_SETFL, flags | O_NONBLOCK));
   }
+
+#endif
 }
 
-static void setCloseOnExec(int fd) {
+static void setCloseOnExec(SOCKET fd) {
+#ifdef _WIN32
+
+  //TODO: error-handling?
+  SetHandleInformation((HANDLE) fd, HANDLE_FLAG_INHERIT, 0);
+
+#else
+
   int flags;
   KJ_SYSCALL(flags = fcntl(fd, F_GETFD));
   if ((flags & FD_CLOEXEC) == 0) {
     KJ_SYSCALL(fcntl(fd, F_SETFD, flags | FD_CLOEXEC));
   }
+
+#endif
 }
 
-static int applyFlags(int fd, uint flags) {
+static int applyFlags(SOCKET fd, uint flags) {
+#ifdef _WIN32
+
+  setNonblocking(fd);
+  if (flags & kj::LowLevelAsyncIoProvider::TAKE_OWNERSHIP) {
+    setCloseOnExec(fd);
+  }
+
+#else
+
   if (flags & kj::LowLevelAsyncIoProvider::ALREADY_NONBLOCK) {
     KJ_DREQUIRE(fcntl(fd, F_GETFL) & O_NONBLOCK, "You claimed you set NONBLOCK, but you didn't.");
   } else {
@@ -226,12 +374,13 @@ static int applyFlags(int fd, uint flags) {
 
   if (flags & kj::LowLevelAsyncIoProvider::TAKE_OWNERSHIP) {
     if (flags & kj::LowLevelAsyncIoProvider::ALREADY_CLOEXEC) {
-      KJ_DREQUIRE(fcntl(fd, F_GETFD) & FD_CLOEXEC,
-                  "You claimed you set CLOEXEC, but you didn't.");
+      KJ_DREQUIRE(fcntl(fd, F_GETFD) & FD_CLOEXEC, "You claimed you set CLOEXEC, but you didn't.");
     } else {
       setCloseOnExec(fd);
     }
   }
+
+#endif
 
   return fd;
 }
@@ -246,7 +395,7 @@ static constexpr uint NEW_FD_FLAGS =
 
 class OwnedFileDescriptor {
 public:
-  OwnedFileDescriptor(uv_loop_t* loop, int fd, uint flags)
+  OwnedFileDescriptor(uv_loop_t* loop, SOCKET fd, uint flags)
       : uvLoop(loop), fd(applyFlags(fd, flags)), flags(flags),
         uvPoller(uv_poll_init, uvLoop, fd) {
     uvPoller->data = this;
@@ -259,8 +408,8 @@ public:
     }
 
     // Don't use KJ_SYSCALL() here because close() should not be repeated on EINTR.
-    if ((flags & kj::LowLevelAsyncIoProvider::TAKE_OWNERSHIP) && close(fd) < 0) {
-      KJ_FAIL_SYSCALL("close", errno, fd) {
+    if ((flags & kj::LowLevelAsyncIoProvider::TAKE_OWNERSHIP) && CLOSE_SOCKET(fd) < 0) {
+      KJ_FAIL_SYSCALL("close", GET_LAST_SOCKET_ERROR(), fd) {
         // Recoverable exceptions are safe in destructors.
         break;
       }
@@ -297,7 +446,7 @@ public:
 
 protected:
   uv_loop_t* const uvLoop;
-  const int fd;
+  const SOCKET fd;
 
 private:
   uint flags;
@@ -357,7 +506,7 @@ class UvIoStream: public OwnedFileDescriptor, public kj::AsyncIoStream {
   // TODO(cleanup):  Allow better code sharing between the two.
 
 public:
-  UvIoStream(uv_loop_t* loop, int fd, uint flags)
+  UvIoStream(uv_loop_t* loop, SOCKET fd, uint flags)
       : OwnedFileDescriptor(loop, fd, flags) {}
   virtual ~UvIoStream() noexcept(false) {}
 
@@ -515,11 +664,11 @@ class UvConnectionReceiver final: public kj::ConnectionReceiver, public OwnedFil
   // Like UvIoStream but for ConnectionReceiver.  This is also largely copied from kj/async-io.c++.
 
 public:
-  UvConnectionReceiver(uv_loop_t* loop, int fd, uint flags)
+  UvConnectionReceiver(uv_loop_t* loop, SOCKET fd, uint flags)
       : OwnedFileDescriptor(loop, fd, flags) {}
 
   kj::Promise<kj::Own<kj::AsyncIoStream>> accept() override {
-    int newFd;
+    SOCKET newFd;
 
   retry:
 #if __linux__
@@ -528,29 +677,31 @@ public:
     newFd = ::accept(fd, nullptr, nullptr);
 #endif
 
-    if (newFd >= 0) {
+    if (!IS_SOCKET_VALID(newFd)) {
       return kj::Own<kj::AsyncIoStream>(kj::heap<UvIoStream>(uvLoop, newFd, NEW_FD_FLAGS));
     } else {
-      int error = errno;
+      int error = GET_LAST_SOCKET_ERROR();
 
       switch (error) {
-        case EAGAIN:
-#if EAGAIN != EWOULDBLOCK
-        case EWOULDBLOCK:
+        case FA_EAGAIN:
+#if FA_EAGAIN != FA_EWOULDBLOCK
+        case FA_EWOULDBLOCK:
 #endif
           // Not ready yet.
           return onReadable().then([this]() {
             return accept();
           });
 
-        case EINTR:
-        case ENETDOWN:
+        case FA_EINTR:
+        case FA_ENETDOWN:
+#ifndef _WIN32
         case EPROTO:
-        case EHOSTDOWN:
-        case EHOSTUNREACH:
-        case ENETUNREACH:
-        case ECONNABORTED:
-        case ETIMEDOUT:
+#endif
+        case FA_EHOSTDOWN:
+        case FA_EHOSTUNREACH:
+        case FA_ENETUNREACH:
+        case FA_ECONNABORTED:
+        case FA_ETIMEDOUT:
           // According to the Linux man page, accept() may report an error if the accepted
           // connection is already broken.  In this case, we really ought to just ignore it and
           // keep waiting.  But it's hard to say exactly what errors are such network errors and
@@ -587,26 +738,26 @@ public:
 
   inline kj::WaitScope& getWaitScope() { return waitScope; }
 
-  kj::Own<kj::AsyncInputStream> wrapInputFd(int fd, uint flags = 0) override {
+  kj::Own<kj::AsyncInputStream> wrapInputFd(Fd fd, uint flags = 0) override {
     return kj::heap<UvIoStream>(eventPort.getUvLoop(), fd, flags);
   }
-  kj::Own<kj::AsyncOutputStream> wrapOutputFd(int fd, uint flags = 0) override {
+  kj::Own<kj::AsyncOutputStream> wrapOutputFd(Fd fd, uint flags = 0) override {
     return kj::heap<UvIoStream>(eventPort.getUvLoop(), fd, flags);
   }
-  kj::Own<kj::AsyncIoStream> wrapSocketFd(int fd, uint flags = 0) override {
+  kj::Own<kj::AsyncIoStream> wrapSocketFd(Fd fd, uint flags = 0) override {
     return kj::heap<UvIoStream>(eventPort.getUvLoop(), fd, flags);
   }
   kj::Promise<kj::Own<kj::AsyncIoStream>> wrapConnectingSocketFd(
-      int fd, const struct sockaddr* addr, uint addrlen, uint flags = 0) override {
+      Fd fd, const struct sockaddr* addr, uint addrlen, uint flags = 0) override {
     // Unfortunately connect() doesn't fit the mold of KJ_NONBLOCKING_SYSCALL, since it indicates
     // non-blocking using EINPROGRESS.
     for (;;) {
       if (::connect(fd, addr, addrlen) < 0) {
-        int error = errno;
-        if (error == EINPROGRESS) {
+        int error = GET_LAST_SOCKET_ERROR();
+        if (error == FA_EINPROGRESS) {
           // Fine.
           break;
-        } else if (error != EINTR) {
+        } else if (error != FA_EINTR) {
           KJ_FAIL_SYSCALL("connect()", error) { break; }
           return kj::Own<kj::AsyncIoStream>();
         }
@@ -618,11 +769,18 @@ public:
 
     auto result = kj::heap<UvIoStream>(eventPort.getUvLoop(), fd, flags);
     auto connected = result->onWritable();
-    return connected.then(kj::mvCapture(result,
+    return connected.then(kj::mvCapture(result,\
         [fd](kj::Own<kj::AsyncIoStream>&& stream) {
           int err;
           socklen_t errlen = sizeof(err);
-          KJ_SYSCALL(getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &errlen));
+
+#ifdef _WIN32
+          char* ptrToErr = (char*)&err;
+#else
+          int* ptrToErr = &err;
+#endif
+
+          KJ_SYSCALL(getsockopt(fd, SOL_SOCKET, SO_ERROR, ptrToErr, &errlen));
           if (err != 0) {
             KJ_FAIL_SYSCALL("connect()", err) { break; }
           }
@@ -631,11 +789,11 @@ public:
   }
 
 #if CAPNP_VERSION < 7000
-  kj::Own<kj::ConnectionReceiver> wrapListenSocketFd(int fd, uint flags = 0) override {
+  kj::Own<kj::ConnectionReceiver> wrapListenSocketFd(Fd fd, uint flags = 0) override {
     return kj::heap<UvConnectionReceiver>(eventPort.getUvLoop(), fd, flags);
   }
 #else
-  kj::Own<kj::ConnectionReceiver> wrapListenSocketFd(int fd,
+  kj::Own<kj::ConnectionReceiver> wrapListenSocketFd(Fd fd,
       kj::LowLevelAsyncIoProvider::NetworkFilter& filter, uint flags = 0) override {
     // TODO(soon): TODO(security): Actually use `filter`. Currently no API is exposed to set a
     //   filter so it's not important yet.
@@ -2097,7 +2255,7 @@ void connect(const v8::FunctionCallbackInfo<v8::Value>& args) {
   });
 }
 
-void connectUnixFd(const v8::FunctionCallbackInfo<v8::Value>& args) {
+/*void connectUnixFd(const v8::FunctionCallbackInfo<v8::Value>& args) {
   // connectUnixFd(fd, bootstrap) -> connection
   //
   // Given the FD of a Unix domain socket, form a connection to the server at the other end by
@@ -2152,7 +2310,7 @@ void connectUnixFd(const v8::FunctionCallbackInfo<v8::Value>& args) {
 
     return context.wrapper.wrapCopy(ConnectionWrapper { promise.fork() });
   });
-}
+}*/
 
 void disconnect(const v8::FunctionCallbackInfo<v8::Value>& args) {
   // disconnect(connection)
@@ -2939,7 +3097,7 @@ void init(v8::Local<v8::Object> exports) {
   mapFunction("fromBytes", fromBytes);
   mapFunction("toBytes", toBytes);
   mapFunction("connect", connect);
-  mapFunction("connectUnixFd", connectUnixFd);
+  //mapFunction("connectUnixFd", connectUnixFd);
   mapFunction("disconnect", disconnect);
   mapFunction("restore", restore);
   mapFunction("castAs", castAs);
