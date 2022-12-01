@@ -308,7 +308,7 @@ function moveBuildResult(builtPath, buildEnvironment) {
   }
 
   try {
-    fs.renameSync(builtPath, installPath);
+    fs.copyFileSync(builtPath, installPath);
     console.log('Installed in `' + installPath + '`');
   } catch (ex) {
     console.error(`All went wrong when we tried to move the target: ${ex}`);
@@ -366,15 +366,15 @@ function patchLibs(patchTool, patchPath, target) {
 
 /*
 If we're using a host->target configuration other than linux->win32, run the above functions to
-build capnp, then build capnp.node, and move the result to the expected location.
+build capnproto and `capnp.node`, then move `capnp.node` to the expected location.
 
 In the linux->win32 case, we're stuck using a precompiled binary, because (speaking from hard
 experience) `node-gyp` doesn't support that type of cross-compilation. We simply copy it from our
-`precompiled/win32-x64` subdirectory.
+`prebuilt/win32-x64` subdirectory.
 */
 
 if (process.platform === "linux" && args.targetPlatform === "win32") {
-  moveBuildResult('precompiled/win32-x64/capnp.node', buildEnvironment);
+  moveBuildResult('prebuilt/win32-x64/capnp.node', buildEnvironment);
 } else {
   build(buildEnvironment);
 

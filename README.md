@@ -51,6 +51,10 @@ See [`README-DARWIN.md`] for more information about our approach to Darwin cross
 npm run test
 ```
 
-This currently requires `libcapnp-dev` to be installed, because the test script looks for a
-`c++.capnp` file which is installed in the same directory as `libcapnp`'s header files. We haven't
-(yet?) bothered to bundle those `.capnp` files into this package.
+Tests currently only run on Linux. They also require `libcapnp-dev` to be installed, because the
+test script looks for a `c++.capnp` schema file which is normally installed in the same directory as
+capnproto's header files. We haven't (yet?) bothered to bundle any of the stock schema files into
+this package.
+
+If you have an urgent need to run this package's tests on Win32, you could find `c++.capnp` among
+capnproto's header files in `./build-capnp`, and move it to `./node_modules/capnp/c++.capnp`.
