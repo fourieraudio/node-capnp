@@ -62,6 +62,8 @@ if ("NODE_PATH" in process.env) {
   }
 }
 
+importPath.push(__dirname);
+
 // Also include standard places where .capnp files are installed.
 importPath.push("/usr/local/include");
 importPath.push("/usr/include");
