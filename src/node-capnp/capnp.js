@@ -75,7 +75,7 @@ exports.importFile = function (filename) {
 
 exports.importSystem = function (filename) {
   for (let prefix of importPath) {
-    let candidate = path.join(prefix, toAppend);
+    let candidate = path.join(prefix, filename);
     if (fs.existsSync(candidate)) {
       return v8capnp.import(filename, candidate, importPath);
     }
