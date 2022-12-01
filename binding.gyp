@@ -41,6 +41,14 @@
           ],
         }],
         [ 'OS=="win"', {
+          # capnp.cc expects RTTI and exceptions to be enabled, but gyp disables them by default
+          'msvs_settings': {
+            'VCCLCompilerTool': {
+              'ExceptionHandling': 1,
+              'RuntimeTypeInfo': 'true',
+              'AdditionalOptions': ['/GR'],
+            }
+          },
 
           # Static linking
           'libraries': [
