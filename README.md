@@ -42,7 +42,8 @@ npm clean-install --platform=win32
 npm install --platform=darwin capnp
 ```
 
-See [`README-DARWIN.md`] for more information about our approach to Darwin cross-compilation.
+See [`README-DARWIN.md`](README-DARWIN.md) for more information about our approach to Darwin
+cross-compilation.
 
 
 ## Testing
