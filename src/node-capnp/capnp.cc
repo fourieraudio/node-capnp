@@ -397,7 +397,7 @@ class OwnedFileDescriptor {
 public:
   OwnedFileDescriptor(uv_loop_t* loop, SOCKET fd, uint flags)
       : uvLoop(loop), fd(applyFlags(fd, flags)), flags(flags),
-        uvPoller(uv_poll_init, uvLoop, fd) {
+        uvPoller(uv_poll_init_socket, uvLoop, fd) {
     uvPoller->data = this;
     UV_CALL(uv_poll_start(uvPoller, 0, &pollCallback), uvLoop);
   }
