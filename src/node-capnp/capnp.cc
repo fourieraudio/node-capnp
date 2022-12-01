@@ -66,6 +66,7 @@ typedef int SOCKET;
 #include <set>
 #include <stdlib.h>
 #include <stddef.h>
+#include <stdio.h>
 #ifdef _WIN32
 ssize_t write(SOCKET fd, const void* buf, size_t len) {
   // Documented as exactly equivalent to `write`, in `man send`.
@@ -409,7 +410,10 @@ public:
 
     // Don't use KJ_SYSCALL() here because close() should not be repeated on EINTR.
     if ((flags & kj::LowLevelAsyncIoProvider::TAKE_OWNERSHIP) && CLOSE_SOCKET(fd) < 0) {
-      KJ_FAIL_SYSCALL("close", GET_LAST_SOCKET_ERROR(), fd) {
+      int error = GET_LAST_SOCKET_ERROR();
+      KJ_FAIL_SYSCALL("close", error, fd) {
+        fprintf(stderr, "failed to close socket. error code: 0x%x", error);
+        
         // Recoverable exceptions are safe in destructors.
         break;
       }
@@ -709,6 +713,7 @@ public:
           goto retry;
 
         default:
+          fprintf(stderr, "accept() failed. error code: 0x%x", error);
           KJ_FAIL_SYSCALL("accept", error);
       }
 
@@ -758,7 +763,11 @@ public:
           // Fine.
           break;
         } else if (error != FA_EINTR) {
-          KJ_FAIL_SYSCALL("connect()", error) { break; }
+          
+          KJ_FAIL_SYSCALL("connect()", error) {
+            fprintf(stderr, "connect() failed. error code: 0x%x", error);
+            break;
+          }
           return kj::Own<kj::AsyncIoStream>();
         }
       } else {
@@ -782,7 +791,10 @@ public:
 
           KJ_SYSCALL(getsockopt(fd, SOL_SOCKET, SO_ERROR, ptrToErr, &errlen));
           if (err != 0) {
-            KJ_FAIL_SYSCALL("connect()", err) { break; }
+            KJ_FAIL_SYSCALL("connect()", err) {
+              fprintf(stderr, "connect() failed. error code: 0x%x", err);
+              break;
+            }
           }
           return kj::mv(stream);
         }));
