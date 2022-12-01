@@ -33,8 +33,13 @@ curl.exe -O https://capnproto.org/capnproto-c++-win32-0.10.3.zip || EXIT /B %ERR
 tar.exe --strip-components=1 -xf capnproto-c++-win32-0.10.3.zip || EXIT /B %ERRORLEVEL%
 DEL capnproto-c++-win32-0.10.3.zip || EXIT /B %ERRORLEVEL%
 
-:: Build the library.
-cmake.exe -S . -B build -G "Visual Studio 17 2022" || EXIT /B %ERRORLEVEL%
+:: Build the library, making sure that the MSVC runtime library is statically linked. Note that
+:: cmake won't respect that setting unless we also enable policy CMP0091.
+cmake.exe ^
+    -D CMAKE_POLICY_DEFAULT_CMP0091=NEW ^
+    -S . -B build ^
+    -D CMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded ^
+    -G "Visual Studio 17 2022" || EXIT /B %ERRORLEVEL%
 cmake.exe --build build --config Release || EXIT /B %ERRORLEVEL%
 
 :: Copy the built `*.lib` files to a `.libs` directory, for convenient access.

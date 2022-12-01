@@ -192,11 +192,7 @@ if (process.platform === 'linux' && args.targetPlatform === 'darwin') {
 }
 
 if (process.platform === 'win32' && args.targetPlatform === 'win32') {
-  // The /MD option is required for consistency with the capnp build process, which expects a
-  // dynamic standard library. `node-gyp` attempts to override this with an `/MT` option. Rather
-  // than investigating this, we just brute-force it by setting `_CL_` rather than `CL`, so that
-  // our arguments are passed last.
-  buildEnvironment._CL_ = `/I ${capnpIncPath} /MD`;
+  buildEnvironment.CL = `/I ${capnpIncPath}`;
   buildEnvironment.LINK = `/LIBPATH:${capnpLibPath}`;
 }
 
