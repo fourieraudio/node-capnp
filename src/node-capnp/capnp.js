@@ -27,8 +27,9 @@ if (typeof CAPNP_NO_DYNAMIC_REQUIRE !== "undefined" && CAPNP_NO_DYNAMIC_REQUIRE)
   v8capnp = require("./capnp.node");
 } else {
   // Look for binary for this platform
+  let targetPlatform = env.npm_config_platform || process.platform;
   var modPath = path.join(
-      __dirname, "../../bin", process.platform + "-" + process.arch,
+      __dirname, "../../bin", targetPlatform + "-" + process.arch,
       "capnp");
   try {
     fs.statSync(modPath + ".node");
