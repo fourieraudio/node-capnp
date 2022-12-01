@@ -30,6 +30,9 @@ reference when making changes to this package.
 }
 ```
 
+Caution: In order for this temporary change to be properly flushed through NPM, you may need to
+delete both your `node_modules` folder and your `package-lock.json`.
+
 ## Cross-Compilation
 
 To cross-compile, simply pass the `--platform` flag when installing this package as a dependency.
