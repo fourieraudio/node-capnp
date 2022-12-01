@@ -62,6 +62,7 @@ if ("NODE_PATH" in process.env) {
   }
 }
 
+importPath.push("./");
 importPath.push(__dirname);
 
 // Also include standard places where .capnp files are installed.
@@ -73,8 +74,8 @@ exports.importFile = function (filename) {
 }
 
 exports.importSystem = function (filename) {
-  for (var i in importPath) {
-    var candidate = path.join(importPath[i], filename);
+  for (let prefix of importPath) {
+    let candidate = path.join(prefix, toAppend);
     if (fs.existsSync(candidate)) {
       return v8capnp.import(filename, candidate, importPath);
     }

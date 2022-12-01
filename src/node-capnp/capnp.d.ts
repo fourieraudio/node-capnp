@@ -42,5 +42,6 @@ declare module Capnp {
   function serialize<Builder, Reader>(type: StructSchema<Builder, Reader>, builder: Builder): Buffer;
   function connect(addr: string): Connection;
   function importFile<SchemaBag>(path: string): SchemaBag;
+  function importSystem<SchemaBag>(path: string): SchemaBag;
 }
 export default Capnp;
