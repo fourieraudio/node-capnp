@@ -412,7 +412,7 @@ public:
     if ((flags & kj::LowLevelAsyncIoProvider::TAKE_OWNERSHIP) && CLOSE_SOCKET(fd) < 0) {
       int error = GET_LAST_SOCKET_ERROR();
       KJ_FAIL_SYSCALL("close", error, fd) {
-        fprintf(stderr, "failed to close socket. error code: 0x%x", error);
+        fprintf(stderr, "failed to close socket. error code: %d\n", error);
         
         // Recoverable exceptions are safe in destructors.
         break;
@@ -713,7 +713,7 @@ public:
           goto retry;
 
         default:
-          fprintf(stderr, "accept() failed. error code: 0x%x", error);
+          fprintf(stderr, "accept() failed. error code: %d\n", error);
           KJ_FAIL_SYSCALL("accept", error);
       }
 
@@ -765,7 +765,7 @@ public:
         } else if (error != FA_EINTR) {
           
           KJ_FAIL_SYSCALL("connect()", error) {
-            fprintf(stderr, "connect() failed. error code: 0x%x", error);
+            fprintf(stderr, "connect() failed. error code: %d\n", error);
             break;
           }
           return kj::Own<kj::AsyncIoStream>();
@@ -792,7 +792,7 @@ public:
           KJ_SYSCALL(getsockopt(fd, SOL_SOCKET, SO_ERROR, ptrToErr, &errlen));
           if (err != 0) {
             KJ_FAIL_SYSCALL("connect()", err) {
-              fprintf(stderr, "connect() failed. error code: 0x%x", err);
+              fprintf(stderr, "connect() failed. error code: %d\n", err);
               break;
             }
           }
