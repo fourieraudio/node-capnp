@@ -1,0 +1,27 @@
+name: "Build a Win32 `capnp.node` binary and upload it as an artifact"
+
+on:
+  workflow_dispatch:
+
+jobs:
+  BuildNodeCapnpWin32:
+    runs-on: windows-2022
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18.12.1
+      
+      - uses: GuillaumeFalourd/setup-windows10-sdk-action@v1.9
+        with:
+          sdk-version: 22000
+      
+      - name: "Build a Win32 `capnp.node` binary"
+        run: npm install --platform=win32
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: capnp-node-win32
+          path: bin/win32-x64/capnp.node
