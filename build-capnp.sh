@@ -37,8 +37,8 @@ mkdir -p ${build_dir}
 pushd ${build_dir}
 
 # Download and unpack the capnproto source. It's pretty small (1.6 MiB), so this should be fast.
-curl -O https://capnproto.org/capnproto-c++-0.10.2.tar.gz
-tar --strip-components=1 -zxf capnproto-c++-0.10.2.tar.gz
+curl -O https://capnproto.org/capnproto-c++-0.10.3.tar.gz
+tar --strip-components=1 -zxf capnproto-c++-0.10.3.tar.gz
 
 # Behave differently depending on the cross-compilation target...
 if [[ $1 == "linux" ]]; then

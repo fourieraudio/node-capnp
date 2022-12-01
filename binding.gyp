@@ -27,7 +27,7 @@
             '-lkj', '-lkj-async', '-lcapnp', '-lcapnpc', '-lcapnp-rpc',
           ]
         }],
-        [ 'OS!="mac"', {
+        [ 'OS=="linux"', {
 
           # Static linking
           'libraries': [
@@ -39,6 +39,13 @@
             '../build-capnp/.libs/libcapnp-rpc.a',
             '-Wl,--no-whole-archive',
           ],
+        }],
+        [ 'OS=="win"', {
+
+          # Static linking
+          'libraries': [
+            'ws2_32.lib', 'kj.lib', 'kj-async.lib', 'capnp.lib', 'capnpc.lib', 'capnp-rpc.lib',
+          ]
         }],
       ],
       

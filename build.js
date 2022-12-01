@@ -139,7 +139,7 @@ function buildCapnp() {
         stdio: 'inherit',
       },
     );
-    
+
   } else {
     throw new Error(`Unexpected host platform ${process.platform}; expected linux or win32.`)
   }
@@ -153,13 +153,20 @@ function buildCapnp() {
   }
 }
 
-// TODO: Ideally these shouldn't be hardcoded, but I can't see a clean workaround...
-const capnpLibPath = path.resolve('./build-capnp/.libs');
-const capnpIncPath = path.resolve('./build-capnp/capnp-root/usr/local/include');
+// TODO: Ideally these paths shouldn't be hardcoded, but I can't see a clean workaround...
+let capnpLibPath, capnpIncPath;
+
+if (process.platform === 'linux') {
+  capnpLibPath = path.resolve('./build-capnp/.libs');
+  capnpIncPath = path.resolve('./build-capnp/capnp-root/usr/local/include');
+} else if (process.platform === 'win32') {
+  capnpLibPath = path.resolve('./build-capnp/.libs');
+  capnpIncPath = path.resolve('./build-capnp/src/');
+}
 
 /*
-For linux->linux and linux->darwin compilation, we configure the `node-gyp` compiler by passing
-in additional environment variables.
+When we expect to run the `node-gyp` compiler, we configure it by passing in additional environment
+variables.
 */
 
 let buildEnvironment = Object.assign({}, process.env);
@@ -182,6 +189,15 @@ if (process.platform === 'linux' && args.targetPlatform === 'darwin') {
 
   // TODO: Does this need to live in an environment variable, or could it just be a constant?
   buildEnvironment.PATCH_TOOL = "x86_64-apple-darwin20.2-install_name_tool";
+}
+
+if (process.platform === 'win32' && args.targetPlatform === 'win32') {
+  // The /MD option is required for consistency with the capnp build process, which expects a
+  // dynamic standard library. `node-gyp` attempts to override this with an `/MT` option. Rather
+  // than investigating this, we just brute-force it by setting `_CL_` rather than `CL`, so that
+  // our arguments are passed last.
+  buildEnvironment._CL_ = `/I ${capnpIncPath} /MD`;
+  buildEnvironment.LINK = `/LIBPATH:${capnpLibPath}`;
 }
 
 /**
