@@ -757,9 +757,16 @@ public:
     // Unfortunately connect() doesn't fit the mold of KJ_NONBLOCKING_SYSCALL, since it indicates
     // non-blocking using EINPROGRESS.
     for (;;) {
+
+#ifdef _WIN32
+      // Crudely make the following ::connect() call non-blocking, by setting FIONBIO to the socket
+      u_long newSetting = 1;
+      ioctlsocket(fd, FIONBIO, &newSetting);
+#endif
+
       if (::connect(fd, addr, addrlen) < 0) {
         int error = GET_LAST_SOCKET_ERROR();
-        if (error == FA_EINPROGRESS) {
+        if (error == FA_EINPROGRESS || error == FA_EWOULDBLOCK) {
           // Fine.
           break;
         } else if (error != FA_EINTR) {
