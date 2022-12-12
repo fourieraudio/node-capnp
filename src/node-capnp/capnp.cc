@@ -2274,7 +2274,12 @@ void connect(const v8::FunctionCallbackInfo<v8::Value>& args) {
   });
 }
 
-/*void connectUnixFd(const v8::FunctionCallbackInfo<v8::Value>& args) {
+#if 0
+// This function is commented out (for now?) because porting it to Windows seems challenging. It's
+// a public API, callable from JS as capnp.connectUnixFd(); it doesn't seem to be called internally,
+// even in tests.
+
+void connectUnixFd(const v8::FunctionCallbackInfo<v8::Value>& args) {
   // connectUnixFd(fd, bootstrap) -> connection
   //
   // Given the FD of a Unix domain socket, form a connection to the server at the other end by
@@ -2329,7 +2334,8 @@ void connect(const v8::FunctionCallbackInfo<v8::Value>& args) {
 
     return context.wrapper.wrapCopy(ConnectionWrapper { promise.fork() });
   });
-}*/
+}
+#endif
 
 void disconnect(const v8::FunctionCallbackInfo<v8::Value>& args) {
   // disconnect(connection)
