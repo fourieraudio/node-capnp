@@ -49,11 +49,6 @@ const args = yargs
     choices: ['ia32', 'x64', 'arm'],
     default: process.arch,
   })
-  .option('patch-lib-path', {
-    description: 'Strip the given path out of any produced binaries. ' +
-      'Requires `target-platform` to be `darwin`.',
-    type: 'string',
-  })
   .option('debug', {
     description: 'Request a debug build from node-gyp.',
     type: 'boolean',
@@ -70,11 +65,6 @@ const args = yargs
   .strict()
   .help()
   .argv;
-
-if (args.patchLibPath !== undefined && args.targetPlatform !== 'darwin') {
-  console.error('--patch-lib-path is only supported on the `darwin` platform');
-  process.exit(1);
-}
 
 /*
 We only support certain combinations of host and target.
@@ -106,7 +96,7 @@ scratch.
 function buildCapnp() {
   let buildCapnpResult;
 
-  if (process.platform === "linux") {
+  if (process.platform === 'linux') {
     /*
     Build the capnp library on Linux, perhaps cross-compiling to Darwin.
     */
@@ -123,7 +113,7 @@ function buildCapnp() {
       },
     );
 
-  } else if (process.platform === "win32") {
+  } else if (process.platform === 'win32') {
     /*
     Build the capnp library on Win32, for a Win32 target.
     */
@@ -154,14 +144,16 @@ function buildCapnp() {
 }
 
 // TODO: Ideally these paths shouldn't be hardcoded, but I can't see a clean workaround...
-let capnpLibPath, capnpIncPath;
+let capnpLibPath, capnpIncPath, patchLibPath;
 
 if (process.platform === 'linux') {
   capnpLibPath = path.resolve('./build-capnp/.libs');
   capnpIncPath = path.resolve('./build-capnp/capnp-root/usr/local/include');
+  patchLibPath = ".libs";
 } else if (process.platform === 'win32') {
   capnpLibPath = path.resolve('./build-capnp/.libs');
   capnpIncPath = path.resolve('./build-capnp/src/');
+  patchLibPath = undefined; // Unused, since we don't support win32->darwin builds
 }
 
 /*
@@ -303,8 +295,8 @@ function moveBuildResult(builtPath, buildEnvironment) {
 		process.exit(1);
 	}
 
-  if (args.patchLibPath !== undefined) {
-    patchLibs(buildEnvironment.PATCH_TOOL, args.patchLibPath, builtPath);
+  if (args.targetPlatform === 'darwin') {
+    patchLibs(buildEnvironment.PATCH_TOOL, patchLibPath, builtPath);
   }
 
   try {
@@ -373,7 +365,7 @@ experience) `node-gyp` doesn't support that type of cross-compilation. We simply
 `prebuilt/win32-x64` subdirectory.
 */
 
-if (process.platform === "linux" && args.targetPlatform === "win32") {
+if (process.platform === 'linux' && args.targetPlatform === 'win32') {
   const prebuiltPath = 'prebuilt/win32-x64/capnp.node';
   
   console.log(`Using prebuilt binary ${prebuiltPath}...`);
