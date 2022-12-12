@@ -374,7 +374,11 @@ experience) `node-gyp` doesn't support that type of cross-compilation. We simply
 */
 
 if (process.platform === "linux" && args.targetPlatform === "win32") {
-  moveBuildResult('prebuilt/win32-x64/capnp.node', buildEnvironment);
+  const prebuiltPath = 'prebuilt/win32-x64/capnp.node';
+  
+  console.log(`Using prebuilt binary ${prebuiltPath}...`);
+
+  moveBuildResult(prebuiltPath, buildEnvironment);
 } else {
   build(buildEnvironment);
 
