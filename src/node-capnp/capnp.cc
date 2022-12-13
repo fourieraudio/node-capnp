@@ -68,52 +68,10 @@ typedef int SOCKET;
 #include <stddef.h>
 #include <stdio.h>
 #ifdef _WIN32
-ssize_t write(SOCKET fd, const void* buf, size_t len) {
-  // Documented as exactly equivalent to `write`, in `man send`.
-  return ::send(fd, (const char*) buf, len, 0);
-}
-
-ssize_t read(SOCKET fd, void* buf, size_t len) {
-  // Documented as *nearly* equivalent to `read`, in `man recv`.
-  return ::recv(fd, (char*) buf, len, 0);
-}
-
 struct iovec {
-    const void*  iov_base;
-    size_t       iov_len;
+  const void*  iov_base;
+  size_t       iov_len;
 };
-
-int writev(SOCKET fd, const struct iovec* vecs, int count) {
-  int total = 0;
-  
-  for ( ; count > 0; count--, vecs++ ) {
-    const char* buf = (const char*) vecs->iov_base;
-    int len = (int) vecs->iov_len;
-    
-    while (len > 0) {
-      int ret = write(fd, buf, len);
-
-      if (ret < 0) {
-        if (total == 0) {
-          total = -1;
-        }
-
-        goto end;
-      }
-
-      if (ret == 0) {
-        goto end;
-      }
-
-      total += ret;
-      buf   += ret;
-      len   -= ret;
-    }
-  }
-  
-  end:    
-    return total;
-}
 #else
 #include <sys/uio.h>
 #endif
@@ -174,6 +132,18 @@ namespace abi {
 #endif
 
 #define FA_EAGAIN FA_EWOULDBLOCK
+
+#ifdef _WIN32
+ssize_t write(SOCKET fd, const void* buf, size_t len) {
+  // Documented as exactly equivalent to `write`, in `man send`.
+  return ::send(fd, (const char*) buf, len, 0);
+}
+
+ssize_t read(SOCKET fd, void* buf, size_t len) {
+  // Documented as *nearly* equivalent to `read`, in `man recv`.
+  return ::recv(fd, (char*) buf, len, 0);
+}
+#endif
 
 #ifdef SANDSTORM_BUILD
 #include <sodium/crypto_stream_chacha20.h>
@@ -616,7 +586,6 @@ private:
                                   kj::ArrayPtr<const kj::ArrayPtr<const byte>> morePieces) {
     KJ_STACK_ARRAY(struct iovec, iov, 1 + morePieces.size(), 16, 128);
 
-    // writev() interface is not const-correct.  :(
     iov[0].iov_base = const_cast<byte*>(firstPiece.begin());
     iov[0].iov_len = firstPiece.size();
     for (uint i = 0; i < morePieces.size(); i++) {
@@ -624,23 +593,40 @@ private:
       iov[i + 1].iov_len = morePieces[i].size();
     }
 
-    ssize_t writeResult;
-    KJ_NONBLOCKING_SYSCALL(writeResult = ::writev(fd, iov.begin(), iov.size())) {
-      // Error.
+    size_t totalBytesWritten = 0;
+    for(uint i = 0; i < morePieces.size() + 1; i++) {
+      struct iovec* thisIov = &iov[i];
 
-      // We can't "return kj::READY_NOW;" inside this block because it causes a memory leak due to
-      // a bug that exists in both Clang and GCC:
-      //   http://gcc.gnu.org/bugzilla/show_bug.cgi?id=33799
-      //   http://llvm.org/bugs/show_bug.cgi?id=12286
-      goto error;
-    }
-    if (false) {
-    error:
-      return kj::READY_NOW;
+      size_t bytesWritten = 0;
+      while (bytesWritten < thisIov->iov_len) {
+        int writeResult;
+        KJ_NONBLOCKING_SYSCALL(writeResult, ::write(
+          fd,
+          (const void*) (((const byte*) thisIov->iov_base) + bytesWritten),
+          thisIov->iov_len - bytesWritten
+        )) {
+          // Error.
+
+          // We can't "return kj::READY_NOW;" inside this block because it causes a memory leak 
+          // due to a bug that exists in both Clang and GCC:
+          //   http://gcc.gnu.org/bugzilla/show_bug.cgi?id=33799
+          //   http://llvm.org/bugs/show_bug.cgi?id=12286
+          goto error;
+        }
+        if (false) {
+        error:
+          return kj::READY_NOW;
+        }
+
+        // A negative result means EAGAIN, which we can treat the same as having written zero bytes.
+        size_t n = writeResult < 0 ? 0 : writeResult;
+        
+        bytesWritten += n;
+        totalBytesWritten += n;
+      }
     }
 
-    // A negative result means EAGAIN, which we can treat the same as having written zero bytes.
-    size_t n = writeResult < 0 ? 0 : writeResult;
+    size_t n = totalBytesWritten;
 
     // Discard all data that was written, then issue a new write for what's left (if any).
     for (;;) {
