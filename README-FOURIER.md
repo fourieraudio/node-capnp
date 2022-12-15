@@ -7,9 +7,9 @@ Electron environment:
 * Bumped dependencies and merged PRs to resolve V8 compatibility issues, so that the package can
   be used with Electron 20.
 * Modified source code and build scripts to support Win32.
-* Modified build scripts to support cross-compilation from Linux to Win32 or Darwin. (In the case of
-  Win32, this requires us to use a prebuilt `node.capnp` binary, because `node-gyp` doesn't support
-  true cross-compilation.)
+* Modified build scripts to support cross-compilation from Linux to Win32 or Darwin, and
+  cross-compilation between CPU architectures. (In the case of Win32, this requires us to use a
+  prebuilt `node.capnp` binary, because `node-gyp` doesn't support true cross-compilation.)
 
 For the original documentation, see [`README.md`](README.md).
 
@@ -35,14 +35,17 @@ delete both your `node_modules` folder and your `package-lock.json`.
 
 ## Cross-Compilation
 
-To cross-compile, simply pass the `--platform` flag when installing this package as a dependency.
-(This is the same strategy used by Electron.) Cross-compilation is supported from either Linux or
-WSL. The supported target platforms are `darwin`, `linux` and `win32`.
+To cross-compile, simply pass the `--platform` and/or `--arch` flags when installing this package as
+a dependency. (This is the same strategy used by Electron.) Cross-compilation is supported from
+either Linux or WSL. The supported target platforms are `darwin`, `linux` and `win32`, and the
+supported target architectures are `ia32`, `x64` and `arm`.
 
 ```bash
+# For example:
 npm clean-install --platform=win32
 
-npm install --platform=darwin capnp
+# Another example:
+npm install --platform=darwin --arch=x64 capnp
 ```
 
 See [`README-DARWIN.md`](README-DARWIN.md) for more information about our approach to Darwin

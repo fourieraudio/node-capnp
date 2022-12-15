@@ -47,7 +47,7 @@ const args = yargs
     description: 'The target architecture for cross-compilation.',
     type: 'string',
     choices: ['ia32', 'x64', 'arm'],
-    default: process.arch,
+    default: process.env.npm_config_arch || process.arch,
   })
   .option('debug', {
     description: 'Request a debug build from node-gyp.',
