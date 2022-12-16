@@ -15,7 +15,7 @@
           # Experimenting with Win32 cross-compilation suggests `OS` is still set to `linux`.
 
           'xcode_settings': {
-            'OTHER_CPLUSPLUSFLAGS' : ['-std=c++14','-stdlib=libc++'],
+            'OTHER_CPLUSPLUSFLAGS' : ['-std=c++17','-stdlib=libc++'],
             'OTHER_LDFLAGS': ['-stdlib=libc++'],
             'GCC_ENABLE_CPP_RTTI': 'YES',
             'GCC_ENABLE_CPP_EXCEPTIONS': 'YES',
