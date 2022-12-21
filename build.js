@@ -322,7 +322,7 @@ function moveBuildResult(builtPath, buildEnvironment) {
  */
 
 function patchLibs(patchTool, patchPath, target) {
-  var libVersion = "0.8.0";
+  var libVersion = "0.10.3";
   var libExt = "so";
   var libs = ["libkj", "libkj-async", "libcapnp", "libcapnpc", "libcapnp-rpc"];
 
