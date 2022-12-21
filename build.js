@@ -181,7 +181,7 @@ if (process.platform === "linux" && args.targetPlatform === "darwin") {
   buildEnvironment.LDFLAGS = "-L" + capnpLibPath;
 
   // TODO: Does this need to live in an environment variable, or could it just be a constant?
-  buildEnvironment.PATCH_TOOL = "x86_64-apple-darwin20.2-install_name_tool";
+  buildEnvironment.PATCH_TOOL = "x86_64-apple-darwin21.2-install_name_tool";
 }
 
 if (process.platform === "win32" && args.targetPlatform === "win32") {
