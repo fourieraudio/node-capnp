@@ -62,8 +62,11 @@ if ("NODE_PATH" in process.env) {
   }
 }
 
-importPath.push("./");
-importPath.push(__dirname);
+/*
+ * PB: You _cannot_ put __dirname in this list, as an ASAR-packed binary returns the name of the
+ * asar in __dirname (which is a _file_), which causes v8capnp.import to get VERY unhappy and
+ * refuse.
+ */
 
 // Also include standard places where .capnp files are installed.
 importPath.push("/usr/local/include");
