@@ -593,6 +593,10 @@ private:
       iov[i + 1].iov_len = morePieces[i].size();
     }
 
+#ifdef _WIN32
+    // Win32 doesn't support writev, but for some reason this attempt to patch out the writev call
+    // is failing on Linux. In lieu of investigation, we're just #ifdef-ing it out for now.
+
     size_t totalBytesWritten = 0;
     for(uint i = 0; i < morePieces.size() + 1; i++) {
       struct iovec* thisIov = &iov[i];
@@ -625,8 +629,26 @@ private:
         totalBytesWritten += n;
       }
     }
-
+    
     size_t n = totalBytesWritten;
+#else
+    ssize_t writeResult;
+    KJ_NONBLOCKING_SYSCALL(writeResult = ::writev(fd, iov.begin(), iov.size())) {
+      // Error.
+      // We can't "return kj::READY_NOW;" inside this block because it causes a memory leak due to
+      // a bug that exists in both Clang and GCC:
+      //   http://gcc.gnu.org/bugzilla/show_bug.cgi?id=33799
+      //   http://llvm.org/bugs/show_bug.cgi?id=12286
+      goto error;
+    }
+    if (false) {
+    error:
+      return kj::READY_NOW;
+    }
+
+    // A negative result means EAGAIN, which we can treat the same as having written zero bytes.
+    size_t n = writeResult < 0 ? 0 : writeResult;
+#endif
 
     // Discard all data that was written, then issue a new write for what's left (if any).
     for (;;) {
