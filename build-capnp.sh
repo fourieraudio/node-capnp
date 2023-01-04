@@ -2,23 +2,23 @@
 
 # Syntax: build-capnp.sh TARGET
 #     TARGET = darwin or linux
-# 
+#
 # This script downloads the capnproto source distribution, unpacks it to a `./build-capnp`
 # subdirectory, and cross-compiles its libraries and headers from a linux host to the specified
 # target. We produce static libraries for the `linux` target (to keep distribution simple), but
 # dynamic libraries for `darwin`, because the Mac system libraries have a tendency to break.
-# 
+#
 # For the `linux` target, the host must have `clang` installed and available on their PATH. The
 # `darwin` target is based on the `osxcross` toolchain, which provides `o64-clang++`.
-# 
+#
 # Copyright Fourier Audio Ltd. 2022. All Rights Reserved.
 
 # See: https://sipb.mit.edu/doc/safe-shell/
 set -euf -o pipefail
 
 # Check argument count
-if [[ $# != 1 ]]; then
-    echo "Expected exactly one argument, but received ${#}."
+if [[ $# != 2 ]]; then
+    echo "Expected exactly two arguments, but received ${#}."
     exit 1
 fi
 
@@ -52,7 +52,7 @@ if [[ $1 == "linux" ]]; then
     make -j
     make install-data DESTDIR=capnp-root
 
-elif [[ $1 == "darwin" ]]; then
+elif [[ $1 == "darwin" && $2 == "x64" ]]; then
     # Cross-compile to darwin, with various manual fixes.
 
     CC=o64-clang CXX=o64-clang++ ./configure --build=x86_64-apple-darwin --host=x86_64-linux-gnu
@@ -78,6 +78,33 @@ elif [[ $1 == "darwin" ]]; then
     CC=o64-clang CXX=o64-clang++ make -j
 
     make install-data DESTDIR=capnp-root
+
+  elif [[ $1 == "darwin" && $2 == "arm64" ]]; then
+      # Cross-compile to arm darwin, with various manual fixes.
+
+      CC=oa64-clang CXX=oa64-clang++ ./configure --build=aarch64-apple-darwin --host=x86_64-linux-gnu
+
+      # libtool seems to decide that we must build shared libraries with -nostdlib as the linker will
+      # necessarily link against the wrong stdlib. I don't believe this to be true for our toolchain,
+      # but I'm also not enough of a GNU greybeard to know how to dissuade libtool from emitting this
+      # linker flag. So, we'll do it the brute-force-and-ignorance way.
+      sed -i 's/ -nostdlib//g' ./libtool
+
+      # Similarly, the configure script seems to misdetect the value of the max_cmd_length variable,
+      # setting it to an empty string. This results in the libtool linker command going bang
+      # approximately half way through. Force the value to be set.
+      ARG_MAX=`getconf ARG_MAX`
+      sed -i "s/max_cmd_len=$/max_cmd_len=${ARG_MAX}/" ./libtool
+
+      # The capnp makefile tries to run the capnpc tool as a smoke test approximately half way through
+      # the process. Unsurprisingly, when we are cross-compiling, this approach is met with limited
+      # success. Expunge this from the makefile, replacing the test_capnp_outputs rule with an empty
+      # recipe.
+      sed -i 's/(test_capnpc_outputs): test_capnpc_middleman$/(test_capnpc_outputs):\n\t@:/' Makefile
+
+      CC=oa64-clang CXX=oa64-clang++ make -j
+
+      make install-data DESTDIR=capnp-root
 
 else
     echo "Invalid TARGET argument: expected darwin or linux, received ${1}."

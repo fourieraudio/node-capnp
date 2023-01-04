@@ -28,6 +28,7 @@ if (typeof CAPNP_NO_DYNAMIC_REQUIRE !== "undefined" && CAPNP_NO_DYNAMIC_REQUIRE)
 } else {
   // Look for binary for this platform
   let targetPlatform = process.env.npm_config_platform || process.platform;
+  let targetArch = process.env.npm_config_arch;
   var modPath = path.join(
       __dirname, "../../bin", targetPlatform + "-" + process.arch,
       "capnp");

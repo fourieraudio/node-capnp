@@ -46,7 +46,7 @@ const args = yargs
   .option("target-arch", {
     description: "The target architecture for cross-compilation.",
     type: "string",
-    choices: ["ia32", "x64", "arm"],
+    choices: ["ia32", "x64", "arm64"],
     default: process.env.npm_config_arch || process.arch,
   })
   .option("debug", {
@@ -108,7 +108,7 @@ function buildCapnp() {
 
     buildCapnpResult = childProcess.spawnSync(
       "./build-capnp.sh",
-      [args.targetPlatform],
+      [args.targetPlatform, args.targetArch],
       {
         stdio: "inherit",
       }
@@ -184,6 +184,20 @@ if (process.platform === "linux" && args.targetPlatform === "darwin") {
   buildEnvironment.PATCH_TOOL = "x86_64-apple-darwin20.4-install_name_tool";
 }
 
+if (process.platform === "linux" && args.targetPlatform === "darwinarm") {
+  buildEnvironment.CC = "oa64-clang";
+  buildEnvironment.CXX = "oa64-clang++";
+  buildEnvironment.CFLAGS =
+    "-mmacosx-version-min=10.7 -std=c++17 " +
+    "-stdlib=libc++ -I" +
+    capnpIncPath;
+  buildEnvironment.CXXFLAGS = buildEnvironment.CFLAGS;
+  buildEnvironment.LDFLAGS = "-L" + capnpLibPath;
+
+  // TODO: Does this need to live in an environment variable, or could it just be a constant?
+  buildEnvironment.PATCH_TOOL = "arm64-apple-darwin20.4-install_name_tool";
+}
+
 if (process.platform === "win32" && args.targetPlatform === "win32") {
   buildEnvironment.CL = `/I ${capnpIncPath}`;
   buildEnvironment.LINK = `/LIBPATH:${capnpLibPath}`;
@@ -227,7 +241,17 @@ function build(buildEnvironment) {
   // The arguments for `node-gyp configure` may differ slightly from those for `node-gyp build`.
   let configureArgs = [...buildArgs];
 
-  if (args.targetPlatform === "darwin") {
+  if (args.targetPlatform === "darwin" && args.targetArch === "x64") {
+    // Pass all subsequent arguments through to `gyp` rather than `node-gyp`.
+    configureArgs.push("--");
+
+    // If we are cross-compiling for darwin, we must instruct gyp to generate a Makefile which is
+    // compatible with the MacOS tooling. We must use the -f variant (not --format=) because it
+    // overrides -f set by node-gyp, and node-gyp isn't clever enough to know that they're aliases.
+    configureArgs.push("-f", "make-mac");
+  }
+
+  if (args.targetPlatform === "darwin" && args.targetArch === "arm64") {
     // Pass all subsequent arguments through to `gyp` rather than `node-gyp`.
     configureArgs.push("--");
 
@@ -300,7 +324,11 @@ function moveBuildResult(builtPath, buildEnvironment) {
     process.exit(1);
   }
 
-  if (args.targetPlatform === "darwin") {
+  if (args.targetPlatform === "darwin" && args.targetArch === "x64") {
+    patchLibs(buildEnvironment.PATCH_TOOL, patchLibPath, builtPath);
+  }
+
+  if (args.targetPlatform === "darwin" && args.targetArch === "arm64") {
     patchLibs(buildEnvironment.PATCH_TOOL, patchLibPath, builtPath);
   }
 
