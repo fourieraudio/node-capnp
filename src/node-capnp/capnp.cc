@@ -88,7 +88,7 @@ namespace abi {
 	) {
     // This call only seems to be used for debugging, so we just return the mangled name unchanged.
     // Also, `outputBuffer` and `length` are both always `nullptr`.
-    
+
     *status = 0;
 
     size_t mangledLength = strlen(mangledName);
@@ -383,7 +383,7 @@ public:
       int error = GET_LAST_SOCKET_ERROR();
       KJ_FAIL_SYSCALL("close", error, fd) {
         fprintf(stderr, "failed to close socket. error code: %d\n", error);
-        
+
         // Recoverable exceptions are safe in destructors.
         break;
       }
@@ -593,10 +593,51 @@ private:
       iov[i + 1].iov_len = morePieces[i].size();
     }
 
+#ifdef _WIN32
+    // Win32 doesn't support writev, but for some reason this attempt to patch out the writev call
+    // is failing on Linux. In lieu of investigation, we're just #ifdef-ing it out for now.
+
+    size_t totalBytesWritten = 0;
+    for(uint i = 0; i < morePieces.size() + 1; i++) {
+      struct iovec* thisIov = &iov[i];
+
+      size_t bytesWritten = 0;
+      while (bytesWritten < thisIov->iov_len) {
+        int writeResult;
+        KJ_NONBLOCKING_SYSCALL(writeResult, ::write(
+          fd,
+          (const void*) (((const byte*) thisIov->iov_base) + bytesWritten),
+          thisIov->iov_len - bytesWritten
+        )) {
+          // Error.
+
+          // We can't "return kj::READY_NOW;" inside this block because it causes a memory leak
+          // due to a bug that exists in both Clang and GCC:
+          //   http://gcc.gnu.org/bugzilla/show_bug.cgi?id=33799
+          //   http://llvm.org/bugs/show_bug.cgi?id=12286
+          goto error;
+        }
+        if (false) {
+        error:
+          return kj::READY_NOW;
+        }
+
+      // We can't "return kj::READY_NOW;" inside this block because it causes a memory leak due to
+      // a bug that exists in both Clang and GCC:
+      //   http://gcc.gnu.org/bugzilla/show_bug.cgi?id=33799
+      //   http://llvm.org/bugs/show_bug.cgi?id=12286
+      goto error;
+    }
+    if (false) {
+    error:
+      return kj::READY_NOW;
+    }
+
+    size_t n = totalBytesWritten;
+#else
     ssize_t writeResult;
     KJ_NONBLOCKING_SYSCALL(writeResult = ::writev(fd, iov.begin(), iov.size())) {
       // Error.
-
       // We can't "return kj::READY_NOW;" inside this block because it causes a memory leak due to
       // a bug that exists in both Clang and GCC:
       //   http://gcc.gnu.org/bugzilla/show_bug.cgi?id=33799
@@ -610,6 +651,7 @@ private:
 
     // A negative result means EAGAIN, which we can treat the same as having written zero bytes.
     size_t n = writeResult < 0 ? 0 : writeResult;
+#endif
 
     // Discard all data that was written, then issue a new write for what's left (if any).
     for (;;) {
@@ -739,7 +781,7 @@ public:
           // Fine.
           break;
         } else if (error != FA_EINTR) {
-          
+
           KJ_FAIL_SYSCALL("connect()", error) {
             fprintf(stderr, "connect() failed. error code: %d\n", error);
             break;
