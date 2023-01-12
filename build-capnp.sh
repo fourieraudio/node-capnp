@@ -5,8 +5,8 @@
 # 
 # This script downloads the capnproto source distribution, unpacks it to a `./build-capnp`
 # subdirectory, and cross-compiles its libraries and headers from a linux host to the specified
-# target. We produce static libraries for the `linux` target (to keep distribution simple), but
-# dynamic libraries for `darwin`, because the Mac system libraries have a tendency to break.
+# target. We produce capnp static libraries for the `linux` target (to keep distribution simple),
+# but dynamic libraries for `darwin`, because the Mac system libraries have a tendency to break.
 # 
 # For the `linux` target, the host must have `clang` installed and available on their PATH. The
 # `darwin` target is based on the `osxcross` toolchain, which provides `o64-clang++`.
@@ -29,16 +29,31 @@ here=$(cd "$(dirname "$BASH_SOURCE")"; \
     pwd)
 
 # We store all of our build artefacts in a subdirectory. If that directory already exists, remove
-# it so that we can cleanly restart from scratch.
+# it so that we can cleanly restart from scratch. Preserve the capnproto source distribution if
+# it's present, so that we don't need to redownload it.
+capnp_filename="capnproto-c++-0.10.3.tar.gz"
 build_dir="${here}/build-capnp"
+
+if [[ -f "${build_dir}/${capnp_filename}" ]]; then
+    mv "${build_dir}/${capnp_filename}" .
+fi
+
 rm -rf ${build_dir}
 mkdir -p ${build_dir}
 
+if [[ -f "./${capnp_filename}" ]]; then
+    mv "./${capnp_filename}" "${build_dir}"
+fi
+
 pushd ${build_dir}
 
-# Download and unpack the capnproto source. It's pretty small (1.6 MiB), so this should be fast.
-curl -O https://capnproto.org/capnproto-c++-0.10.3.tar.gz
-tar --strip-components=1 -zxf capnproto-c++-0.10.3.tar.gz
+# Download the capnproto source, if we don't already have it, and then unpack it. It's pretty small
+# (1.6 MiB), so the download should be fast.
+if [[ ! -f "${capnp_filename}" ]]; then
+    curl -O https://capnproto.org/capnproto-c++-0.10.3.tar.gz
+fi
+
+tar --strip-components=1 -zxf "${capnp_filename}"
 
 # Behave differently depending on the cross-compilation target...
 if [[ $1 == "linux" ]]; then

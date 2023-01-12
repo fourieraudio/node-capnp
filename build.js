@@ -153,6 +153,12 @@ if (process.platform === "linux") {
   capnpLibPath = path.resolve("./build-capnp/.libs");
   capnpIncPath = path.resolve("./build-capnp/src/");
   patchLibPath = undefined; // Unused, since we don't support win32->darwin builds
+} else {
+  throw new Error(
+    `Building on platform ${JSON.stringify(
+      process.platform
+    )} is not yet supported.`
+  );
 }
 
 /*
@@ -320,7 +326,6 @@ function moveBuildResult(builtPath, buildEnvironment) {
  * @param patchPath - the path to be stripped out of the binary
  * @param target - The target binary to be modified
  */
-
 function patchLibs(patchTool, patchPath, target) {
   var libVersion = "0.10.3";
   var libExt = "so";
