@@ -10,6 +10,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Install dependencies
+        run: sudo ./install-deps.sh
+
       - name: Test build module (linux-x64)
         run: npm i && file bin/linux-x64/capnp.node
 
