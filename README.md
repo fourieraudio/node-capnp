@@ -1,3 +1,5 @@
+**For Fourier-specific documentation, see [`README-FOURIER.md`](README-FOURIER.md).**
+
 # Cap'n Proto bindings for Node.js
 
 This package is a hacky wrapper around the [Cap'n Proto](http://capnproto.org)

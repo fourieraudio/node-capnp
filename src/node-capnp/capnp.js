@@ -27,8 +27,9 @@ if (typeof CAPNP_NO_DYNAMIC_REQUIRE !== "undefined" && CAPNP_NO_DYNAMIC_REQUIRE)
   v8capnp = require("./capnp.node");
 } else {
   // Look for binary for this platform
+  let targetPlatform = process.env.npm_config_platform || process.platform;
   var modPath = path.join(
-      __dirname, "../../bin", process.platform + "-" + process.arch,
+      __dirname, "../../bin", targetPlatform + "-" + process.arch,
       "capnp");
   try {
     fs.statSync(modPath + ".node");
@@ -61,6 +62,12 @@ if ("NODE_PATH" in process.env) {
   }
 }
 
+/*
+ * PB: You _cannot_ put __dirname in this list, as an ASAR-packed binary returns the name of the
+ * asar in __dirname (which is a _file_), which causes v8capnp.import to get VERY unhappy and
+ * refuse.
+ */
+
 // Also include standard places where .capnp files are installed.
 importPath.push("/usr/local/include");
 importPath.push("/usr/include");
@@ -70,8 +77,8 @@ exports.importFile = function (filename) {
 }
 
 exports.importSystem = function (filename) {
-  for (var i in importPath) {
-    var candidate = path.join(importPath[i], filename);
+  for (let prefix of importPath) {
+    let candidate = path.join(prefix, filename);
     if (fs.existsSync(candidate)) {
       return v8capnp.import(filename, candidate, importPath);
     }
