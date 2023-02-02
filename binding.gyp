@@ -31,6 +31,8 @@
 
           # Static linking
           'libraries': [
+            # The --whole-archive flag is conventional when composing a shared library from static
+            # libraries, to ensure that no parts of the static libraries are omitted.
             '-Wl,--whole-archive',
             '../build-capnp/.libs/libkj.a',
             '../build-capnp/.libs/libkj-async.a',
@@ -56,7 +58,7 @@
           ]
         }],
       ],
-      
+
     }
   ]
 }

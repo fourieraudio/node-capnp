@@ -153,6 +153,12 @@ if (process.platform === "linux") {
   capnpLibPath = path.resolve("./build-capnp/.libs");
   capnpIncPath = path.resolve("./build-capnp/src/");
   patchLibPath = undefined; // Unused, since we don't support win32->darwin builds
+} else {
+  throw new Error(
+    `Building on platform ${JSON.stringify(
+      process.platform
+    )} is not yet supported.`
+  );
 }
 
 /*
@@ -170,7 +176,7 @@ if (process.platform === "linux" && args.targetPlatform === "linux") {
   buildEnvironment.LDFLAGS = "-L" + capnpLibPath;
 }
 
-if (process.platform === "linux" && args.targetPlatform === "darwin") {
+if (process.platform === "linux" && args.targetPlatform === "darwin" && args.targetArch === "x64") {
   buildEnvironment.CC = "o64-clang";
   buildEnvironment.CXX = "o64-clang++";
   buildEnvironment.CFLAGS =
@@ -184,7 +190,7 @@ if (process.platform === "linux" && args.targetPlatform === "darwin") {
   buildEnvironment.PATCH_TOOL = "x86_64-apple-darwin20.4-install_name_tool";
 }
 
-if (process.platform === "linux" && args.targetPlatform === "darwinarm") {
+if (process.platform === "linux" && args.targetPlatform === "darwin" && args.targetArch === "arm64") {
   buildEnvironment.CC = "oa64-clang";
   buildEnvironment.CXX = "oa64-clang++";
   buildEnvironment.CFLAGS =
