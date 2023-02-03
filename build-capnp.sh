@@ -17,7 +17,7 @@
 set -euf -o pipefail
 
 # Check argument count
-if [[ $# < 1 && $# > 2 ]]; then
+if [[ $# < 1 || $# > 2 ]]; then
     echo "Expected either one or two arguments, but received ${#}."
     exit 1
 fi
