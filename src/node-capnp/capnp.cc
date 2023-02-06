@@ -586,6 +586,7 @@ private:
                                   kj::ArrayPtr<const kj::ArrayPtr<const byte>> morePieces) {
     KJ_STACK_ARRAY(struct iovec, iov, 1 + morePieces.size(), 16, 128);
 
+    // writev() interface is not const-correct.  :(
     iov[0].iov_base = const_cast<byte*>(firstPiece.begin());
     iov[0].iov_len = firstPiece.size();
     for (uint i = 0; i < morePieces.size(); i++) {
