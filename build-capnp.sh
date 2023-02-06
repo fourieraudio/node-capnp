@@ -80,7 +80,7 @@ elif [[ $1 == "darwin" ]]; then
         echo "Invalid ARCH argument; expected 'x64' or 'arm64'"
         exit 1
     fi
-    
+
     # Cross-compile to darwin, with various manual fixes.
     ./configure --build=${CONFIGURE_TARGET} --host=x86_64-linux-gnu
 
@@ -105,33 +105,6 @@ elif [[ $1 == "darwin" ]]; then
     CC=o64-clang CXX=o64-clang++ make -j
 
     make install-data DESTDIR=capnp-root
-
-  elif [[ $1 == "darwin" && $2 == "arm64" ]]; then
-      # Cross-compile to arm darwin, with various manual fixes.
-
-      CC=oa64-clang CXX=oa64-clang++ ./configure --build=aarch64-apple-darwin --host=x86_64-linux-gnu
-
-      # libtool seems to decide that we must build shared libraries with -nostdlib as the linker will
-      # necessarily link against the wrong stdlib. I don't believe this to be true for our toolchain,
-      # but I'm also not enough of a GNU greybeard to know how to dissuade libtool from emitting this
-      # linker flag. So, we'll do it the brute-force-and-ignorance way.
-      sed -i 's/ -nostdlib//g' ./libtool
-
-      # Similarly, the configure script seems to misdetect the value of the max_cmd_length variable,
-      # setting it to an empty string. This results in the libtool linker command going bang
-      # approximately half way through. Force the value to be set.
-      ARG_MAX=`getconf ARG_MAX`
-      sed -i "s/max_cmd_len=$/max_cmd_len=${ARG_MAX}/" ./libtool
-
-      # The capnp makefile tries to run the capnpc tool as a smoke test approximately half way through
-      # the process. Unsurprisingly, when we are cross-compiling, this approach is met with limited
-      # success. Expunge this from the makefile, replacing the test_capnp_outputs rule with an empty
-      # recipe.
-      sed -i 's/(test_capnpc_outputs): test_capnpc_middleman$/(test_capnpc_outputs):\n\t@:/' Makefile
-
-      CC=oa64-clang CXX=oa64-clang++ make -j
-
-      make install-data DESTDIR=capnp-root
 
 else
     echo "Invalid TARGET argument: expected darwin or linux, received ${1}."
