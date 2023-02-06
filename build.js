@@ -176,9 +176,19 @@ if (process.platform === "linux" && args.targetPlatform === "linux") {
   buildEnvironment.LDFLAGS = "-L" + capnpLibPath;
 }
 
-if (process.platform === "linux" && args.targetPlatform === "darwin" && args.targetArch === "x64") {
-  buildEnvironment.CC = "o64-clang";
-  buildEnvironment.CXX = "o64-clang++";
+if (process.platform === "linux" && args.targetPlatform === "darwin") { 
+  if (args.targetArch === "x64") {
+    buildEnvironment.CC = "o64-clang";
+    buildEnvironment.CXX = "o64-clang++";
+    buildEnvironment.PATCH_TOOL = "x86_64-apple-darwin20.4-install_name_tool";
+  } else if (args.targetArch == "arm64") {
+    buildEnvironment.CC = "oa64-clang";
+    buildEnvironment.CXX = "oa64-clang++";
+    buildEnvironment.PATCH_TOOL = "arm64-apple-darwin20.4-install_name_tool";
+  } else {
+      throw new Error(`Bad target architecture ${args.targetArch} for darwin cross-compilation`);
+  }
+  
   buildEnvironment.CFLAGS =
     "-mmacosx-version-min=10.7 -std=c++17 " +
     "-stdlib=libc++ -I" +
