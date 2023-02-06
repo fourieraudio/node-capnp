@@ -314,11 +314,7 @@ function moveBuildResult(builtPath, buildEnvironment) {
     process.exit(1);
   }
 
-  if (args.targetPlatform === "darwin" && args.targetArch === "x64") {
-    patchLibs(buildEnvironment.PATCH_TOOL, patchLibPath, builtPath);
-  }
-
-  if (args.targetPlatform === "darwin" && args.targetArch === "arm64") {
+  if (args.targetPlatform === "darwin") {
     patchLibs(buildEnvironment.PATCH_TOOL, patchLibPath, builtPath);
   }
 
