@@ -334,7 +334,6 @@ function moveBuildResult(builtPath, buildEnvironment) {
  * @param patchPath - the path to be stripped out of the binary
  * @param target - The target binary to be modified
  */
-
 function patchLibs(patchTool, patchPath, target) {
   var libVersion = "0.10.3";
   var libExt = "so";
