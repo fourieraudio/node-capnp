@@ -88,7 +88,7 @@ namespace abi {
 	) {
     // This call only seems to be used for debugging, so we just return the mangled name unchanged.
     // Also, `outputBuffer` and `length` are both always `nullptr`.
-    
+
     *status = 0;
 
     size_t mangledLength = strlen(mangledName);
@@ -383,7 +383,7 @@ public:
       int error = GET_LAST_SOCKET_ERROR();
       KJ_FAIL_SYSCALL("close", error, fd) {
         fprintf(stderr, "failed to close socket. error code: %d\n", error);
-        
+
         // Recoverable exceptions are safe in destructors.
         break;
       }
@@ -615,7 +615,7 @@ private:
         )) {
           // Error.
 
-          // We can't "return kj::READY_NOW;" inside this block because it causes a memory leak 
+          // We can't "return kj::READY_NOW;" inside this block because it causes a memory leak
           // due to a bug that exists in both Clang and GCC:
           //   http://gcc.gnu.org/bugzilla/show_bug.cgi?id=33799
           //   http://llvm.org/bugs/show_bug.cgi?id=12286
@@ -628,12 +628,12 @@ private:
 
         // A negative result means EAGAIN, which we can treat the same as having written zero bytes.
         size_t n = writeResult < 0 ? 0 : writeResult;
-        
+
         bytesWritten += n;
         totalBytesWritten += n;
       }
     }
-    
+
     size_t n = totalBytesWritten;
 #else
     ssize_t writeResult;
@@ -782,7 +782,7 @@ public:
           // Fine.
           break;
         } else if (error != FA_EINTR) {
-          
+
           KJ_FAIL_SYSCALL("connect()", error) {
             fprintf(stderr, "connect() failed. error code: %d\n", error);
             break;

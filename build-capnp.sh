@@ -1,24 +1,25 @@
 #!/bin/bash
 
-# Syntax: build-capnp.sh TARGET
+# Syntax: build-capnp.sh TARGET [ARCH]
 #     TARGET = darwin or linux
-# 
+#     ARCH = x64 or arm64 (only if TARGET == darwin)
+#
 # This script downloads the capnproto source distribution, unpacks it to a `./build-capnp`
 # subdirectory, and cross-compiles its libraries and headers from a linux host to the specified
 # target. We produce capnp static libraries for the `linux` target (to keep distribution simple),
 # but dynamic libraries for `darwin`, because the Mac system libraries have a tendency to break.
-# 
+#
 # For the `linux` target, the host must have `clang` installed and available on their PATH. The
 # `darwin` target is based on the `osxcross` toolchain, which provides `o64-clang++`.
-# 
+#
 # Copyright Fourier Audio Ltd. 2022. All Rights Reserved.
 
 # See: https://sipb.mit.edu/doc/safe-shell/
 set -euf -o pipefail
 
 # Check argument count
-if [[ $# != 1 ]]; then
-    echo "Expected exactly one argument, but received ${#}."
+if [[ $# < 1 || $# > 2 ]]; then
+    echo "Expected either one or two arguments, but received ${#}."
     exit 1
 fi
 
@@ -68,9 +69,21 @@ if [[ $1 == "linux" ]]; then
     make install-data DESTDIR=capnp-root
 
 elif [[ $1 == "darwin" ]]; then
-    # Cross-compile to darwin, with various manual fixes.
+    if [[ $2 == "x64" ]]; then
+        export CC=o64-clang
+        export CXX=o64-clang++
+        CONFIGURE_TARGET=x86_64-apple-darwin
+    elif [[ $2 == "arm64" ]]; then
+        export CC=oa64-clang
+        export CXX=oa64-clang++
+        CONFIGURE_TARGET=aarch64-apple-darwin
+    else
+        echo "Invalid ARCH argument; expected 'x64' or 'arm64'"
+        exit 1
+    fi
 
-    CC=o64-clang CXX=o64-clang++ ./configure --build=x86_64-apple-darwin --host=x86_64-linux-gnu
+    # Cross-compile to darwin, with various manual fixes.
+    ./configure --build=${CONFIGURE_TARGET} --host=x86_64-linux-gnu
 
     # libtool seems to decide that we must build shared libraries with -nostdlib as the linker will
     # necessarily link against the wrong stdlib. I don't believe this to be true for our toolchain,
