@@ -241,17 +241,7 @@ function build(buildEnvironment) {
   // The arguments for `node-gyp configure` may differ slightly from those for `node-gyp build`.
   let configureArgs = [...buildArgs];
 
-  if (args.targetPlatform === "darwin" && args.targetArch === "x64") {
-    // Pass all subsequent arguments through to `gyp` rather than `node-gyp`.
-    configureArgs.push("--");
-
-    // If we are cross-compiling for darwin, we must instruct gyp to generate a Makefile which is
-    // compatible with the MacOS tooling. We must use the -f variant (not --format=) because it
-    // overrides -f set by node-gyp, and node-gyp isn't clever enough to know that they're aliases.
-    configureArgs.push("-f", "make-mac");
-  }
-
-  if (args.targetPlatform === "darwin" && args.targetArch === "arm64") {
+  if (args.targetPlatform === "darwin") {
     // Pass all subsequent arguments through to `gyp` rather than `node-gyp`.
     configureArgs.push("--");
 
