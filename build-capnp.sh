@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# Syntax: build-capnp.sh TARGET
+# Syntax: build-capnp.sh TARGET [ARCH]
 #     TARGET = darwin or linux
+#     ARCH = x64 or arm64 (only if TARGET == darwin)
 #
 # This script downloads the capnproto source distribution, unpacks it to a `./build-capnp`
 # subdirectory, and cross-compiles its libraries and headers from a linux host to the specified
