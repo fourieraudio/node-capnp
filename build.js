@@ -314,11 +314,7 @@ function moveBuildResult(builtPath, buildEnvironment) {
     process.exit(1);
   }
 
-  if (args.targetPlatform === "darwin" && args.targetArch === "x64") {
-    patchLibs(buildEnvironment.PATCH_TOOL, patchLibPath, builtPath);
-  }
-
-  if (args.targetPlatform === "darwin" && args.targetArch === "arm64") {
+  if (args.targetPlatform === "darwin") {
     patchLibs(buildEnvironment.PATCH_TOOL, patchLibPath, builtPath);
   }
 
@@ -338,7 +334,6 @@ function moveBuildResult(builtPath, buildEnvironment) {
  * @param patchPath - the path to be stripped out of the binary
  * @param target - The target binary to be modified
  */
-
 function patchLibs(patchTool, patchPath, target) {
   var libVersion = "0.10.3";
   var libExt = "so";
