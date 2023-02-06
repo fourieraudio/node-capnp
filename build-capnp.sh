@@ -67,10 +67,22 @@ if [[ $1 == "linux" ]]; then
     make -j
     make install-data DESTDIR=capnp-root
 
-elif [[ $1 == "darwin" && $2 == "x64" ]]; then
+elif [[ $1 == "darwin" ]]; then
+    if [[ $2 == "x64" ]]; then
+        export CC=o64-clang
+        export CXX=o64-clang++
+        CONFIGURE_TARGET=x86_64-apple-darwin
+    elif [[ $2 == "arm64" ]]; then
+        export CC=oa64-clang
+        export CXX=oa64-clang++
+        CONFIGURE_TARGET=aarch64-apple-darwin
+    else
+        echo "Invalid ARCH argument; expected 'x64' or 'arm64'"
+        exit 1
+    fi
+    
     # Cross-compile to darwin, with various manual fixes.
-
-    CC=o64-clang CXX=o64-clang++ ./configure --build=x86_64-apple-darwin --host=x86_64-linux-gnu
+    ./configure --build=${CONFIGURE_TARGET} --host=x86_64-linux-gnu
 
     # libtool seems to decide that we must build shared libraries with -nostdlib as the linker will
     # necessarily link against the wrong stdlib. I don't believe this to be true for our toolchain,
