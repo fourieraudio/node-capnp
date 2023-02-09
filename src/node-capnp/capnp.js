@@ -255,7 +255,7 @@ function Capability(native, schema) {
   }
   this.schema = schema;
 
-  Object.freeze(this);
+  Object.seal(this);
 }
 
 function Connection(native) {
