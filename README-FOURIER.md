@@ -32,7 +32,7 @@ reference when making changes to this package.
 
 Running `npm install` after adding this dependency will acquire the module and compile its contents.
 Note that npm very helpfully swallows all output when building as part of an install script like
-this, and will appear to have simply hung for ~some time whilst it performs to compilation. What
+this, and will appear to have simply hung for ~some time whilst it performs the compilation. What
 even is developer experience. To see the output of the compilation process, you must run
 `npm install` from within the package's source directory.
 
