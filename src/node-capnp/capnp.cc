@@ -693,7 +693,7 @@ public:
     newFd = ::accept(fd, nullptr, nullptr);
 #endif
 
-    if (!IS_SOCKET_VALID(newFd)) {
+    if (IS_SOCKET_VALID(newFd)) {
       return kj::Own<kj::AsyncIoStream>(kj::heap<UvIoStream>(uvLoop, newFd, NEW_FD_FLAGS));
     } else {
       int error = GET_LAST_SOCKET_ERROR();
