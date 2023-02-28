@@ -770,10 +770,21 @@ public:
     // non-blocking using EINPROGRESS.
     for (;;) {
 
-#ifdef _WIN32
-      // Crudely make the following ::connect() call non-blocking, by setting FIONBIO to the socket
-      u_long newSetting = 1;
-      ioctlsocket(fd, FIONBIO, &newSetting);
+#if !__linux__
+      // Crudely make the following ::connect() call non-blocking.
+      // For some reason, on non-Linux systems, it seems we can end up without a non-blocking socket
+      // here, which results in us hanging the entire event loop if the connect call blocks for any
+      // reason, which is bad; TF-489.
+      setNonblocking(fd);
+#endif
+
+#if !_WIN32
+      // It is _very bad_ if we accidentally call connect() on a blocking socket; it can tank
+      // the entire application; TF-489. Prevent this at all costs.
+      KJ_ASSERT(
+        fcntl(fd, F_GETFL) & O_NONBLOCK,
+        "Attempted to connect to a socket that was not NONBLOCK; aborting."
+      );
 #endif
 
       if (::connect(fd, addr, addrlen) < 0) {
