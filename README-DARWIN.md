@@ -2,8 +2,10 @@ So, you want to cross-compile for darwin? Have fun.
 
 Jokes, I've done all the work for you. Simply:
 
-0. Make the `osxcross` darwin clang toolchain available on your PATH (`rewind-server` has a handy
-   script to do all the building for you)
+0. Make the `osxcross` darwin clang toolchain available on your PATH
+   (Fourier application repositories have tooling to do all the building for you; see
+   `transform/desktop/build/build-darwin-cross-compiler.sh` and
+   `rewind/rewind-server/build-darwin.sh`).
 1. From a Linux build environment, run `npm install --platform=darwin`.
 2. ...
 3. Profit!!!

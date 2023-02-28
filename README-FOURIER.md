@@ -16,22 +16,19 @@ For the original documentation, see [`README.md`](README.md).
 ## Usage
 
 To make use of this package, add it to the `dependencies` table in your `package.json`. You should
-commit a `git+ssh:` reference to source control, but you could temporarily change it to a `file:`
-reference when making changes to this package.
+commit a `git+ssh:` reference to source control:
 
 ```js
 "dependencies": {
   "capnp": "git+ssh://git@github.com/fourieraudio/node-capnp.git#main"
 }
-
-// Or, temporarily...
-"dependencies": {
-  "capnp": "file:../node-capnp"
-}
 ```
 
-Caution: In order for this temporary change to be properly flushed through NPM, you may need to
-delete both your `node_modules` folder and your `package-lock.json`.
+Running `npm install` after adding this dependency will acquire the module and compile its contents.
+Note that npm very helpfully swallows all output when building as part of an install script like
+this, and will appear to have simply hung for ~some time whilst it performs the compilation. What
+even is developer experience. To see the output of the compilation process, you must run
+`npm install` from within the package's source directory.
 
 ## Cross-Compilation
 
@@ -51,6 +48,23 @@ npm install --platform=darwin --arch=x64 capnp
 See [`README-DARWIN.md`](README-DARWIN.md) for more information about our approach to Darwin
 cross-compilation.
 
+## Development
+
+To compile the module when developing it, you can use the same `npm install` commands referenced
+under "Cross-Compilation" above from within this package's source directory. When compiling the
+module this way, the output will thankfully be printed to the terminal for you to follow along.
+
+To use your modified version of this repository in another project during development, you can
+temporarily change the dependency reference in the `package.json` to a `file:` reference:
+
+```
+"dependencies": {
+  "capnp": "file:../node-capnp"
+}
+```
+
+Caution: In order for this temporary change to be properly flushed through NPM, you may need to
+delete both your `node_modules` folder and your `package-lock.json`.
 
 ## Testing
 
