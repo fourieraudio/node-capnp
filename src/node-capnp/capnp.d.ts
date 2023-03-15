@@ -41,6 +41,7 @@ declare module Capnp {
   function parse<Builder, Reader>(type: StructSchema<Builder, Reader>, buffer: Buffer): Reader;
   function serialize<Builder, Reader>(type: StructSchema<Builder, Reader>, builder: Builder): Buffer;
   function connect(addr: string): Connection;
+  function connect<Client>(addr: string, clientBootstrapCapability: Client): Connection;
   function importFile<SchemaBag>(path: string): SchemaBag;
   function importSystem<SchemaBag>(path: string): SchemaBag;
 }
