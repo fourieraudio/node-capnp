@@ -145,6 +145,54 @@ ssize_t read(SOCKET fd, void* buf, size_t len) {
 }
 #endif
 
+#ifdef _WIN32
+
+#if _MSC_VER && !defined(__clang__)
+// The KJ_NONBLOCKING_SYSCALL macro checks for specific error codes
+// returned from the call, allowing EAGAIN / EWOULDBLOCK to pass unhindered.
+//
+// Unfortunately, the method by which it checks for these error codes is by inspecting `errno`;
+// see `getOsErrorNumber` in `capnp/src/kj/debug.c++`, called by `Debug::syscall` in
+// `capnp/src/kj/debug.h`, called by the implementation of the macro. However, in the magical world
+// of winsock, errors are *not* reported via `errno` - they are reported via the wonderous
+// `WSAGetLastError` instead. As a result, using `KJ_NONBLOCKING_SYSCALL` on win32 calls to winsock
+// functions results in spurious failures: TF-1521.
+
+template <typename Call>
+kj::_::Debug::Win32Result faWinsockCallNonBlocking(Call&& call) {
+  int result = call();
+
+  // Expect a return value of -1 (SOCKET_ERROR) means failure, but allow WSAEWOULDBLOCK.
+  if (result == -1) {
+      int error = WSAGetLastError();
+
+      if (error == WSAEWOULDBLOCK) {
+          return kj::_::Debug::win32Call(true);
+      } else {
+          return kj::_::Debug::win32Call(false);
+      }
+  } else {
+      return kj::_::Debug::win32Call(true);
+  }
+}
+
+#define FA_NONBLOCKING_SOCKCALL(call, ...) \
+  if (auto _kjWin32Result = ::faWinsockCallNonBlocking([&](){return (call);})) {} else \
+    for (::kj::_::Debug::Fault f(__FILE__, __LINE__, \
+             _kjWin32Result, #call, "" #__VA_ARGS__, __VA_ARGS__);; f.fatal())
+
+#else
+#error "win32: Only implemented for MSVC (sad). See kj debug.h for what you have to do to fix this in a more enlightened future."
+#endif
+
+#else
+// On more standards-compliant platforms, just leave well enough alone.
+
+#define FA_NONBLOCKING_SOCKCALL(call, ...) \
+    KJ_NONBLOCKING_SYSCALL(call, ##__VA_ARGS__)
+
+#endif
+
 #ifdef SANDSTORM_BUILD
 #include <sodium/crypto_stream_chacha20.h>
 #endif
@@ -382,7 +430,7 @@ public:
     if ((flags & kj::LowLevelAsyncIoProvider::TAKE_OWNERSHIP) && CLOSE_SOCKET(fd) < 0) {
       int error = GET_LAST_SOCKET_ERROR();
       KJ_FAIL_SYSCALL("close", error, fd) {
-        fprintf(stderr, "failed to close socket. error code: %d\n", error);
+        KJ_LOG(WARNING, "close() failed", error);
 
         // Recoverable exceptions are safe in destructors.
         break;
@@ -501,7 +549,7 @@ public:
 
   kj::Promise<void> write(const void* buffer, size_t size) override {
     ssize_t writeResult;
-    KJ_NONBLOCKING_SYSCALL(writeResult = ::write(fd, buffer, size)) {
+    FA_NONBLOCKING_SOCKCALL(writeResult = ::write(fd, buffer, size)) {
       return kj::READY_NOW;
     }
 
@@ -549,7 +597,7 @@ private:
     // be included in the final return value.
 
     ssize_t n;
-    KJ_NONBLOCKING_SYSCALL(n = ::read(fd, buffer, maxBytes)) {
+    FA_NONBLOCKING_SOCKCALL(n = ::read(fd, buffer, maxBytes)) {
       return alreadyRead;
     }
 
@@ -608,7 +656,7 @@ private:
       size_t bytesWritten = 0;
       while (bytesWritten < thisIov->iov_len) {
         int writeResult;
-        KJ_NONBLOCKING_SYSCALL(writeResult = ::write(
+        FA_NONBLOCKING_SOCKCALL(writeResult = ::write(
           fd,
           (const void*) (((const byte*) thisIov->iov_base) + bytesWritten),
           thisIov->iov_len - bytesWritten
@@ -725,7 +773,7 @@ public:
           goto retry;
 
         default:
-          fprintf(stderr, "accept() failed. error code: %d\n", error);
+          KJ_LOG(WARNING, "accept() failed", error);
           KJ_FAIL_SYSCALL("accept", error);
       }
 
@@ -795,7 +843,7 @@ public:
         } else if (error != FA_EINTR) {
 
           KJ_FAIL_SYSCALL("connect()", error) {
-            fprintf(stderr, "connect() failed. error code: %d\n", error);
+            KJ_LOG(WARNING, "connect() failed", error);
             break;
           }
           return kj::Own<kj::AsyncIoStream>();
@@ -822,7 +870,7 @@ public:
           KJ_SYSCALL(getsockopt(fd, SOL_SOCKET, SO_ERROR, ptrToErr, &errlen));
           if (err != 0) {
             KJ_FAIL_SYSCALL("connect()", err) {
-              fprintf(stderr, "connect() failed. error code: %d\n", err);
+              KJ_LOG(WARNING, "connect() failed", err);
               break;
             }
           }
