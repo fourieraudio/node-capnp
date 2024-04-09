@@ -189,7 +189,7 @@ kj::_::Debug::Win32Result faWinsockCallNonBlocking(Call&& call) {
 // On more standards-compliant platforms, just leave well enough alone.
 
 #define FA_NONBLOCKING_SOCKCALL(call, ...) \
-    KJ_NONBLOCKING_SYSCALL(call, KJ_EXPAND(__VA_ARGS__))
+    KJ_NONBLOCKING_SYSCALL(call, ##__VA_ARGS__)
 
 #endif
 
