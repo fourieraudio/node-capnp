@@ -1280,8 +1280,10 @@ template <typename T>
 v8::Local<v8::Value> wrapBuffer(kj::Array<T>&& array) {
   char* data = reinterpret_cast<char*>(array.begin());
   size_t size = array.size() * sizeof(T);
-  return check(node::Buffer::New(v8::Isolate::GetCurrent(), data, size, &deleteArray<T>,
-                                 new kj::Array<T>(kj::mv(array))));
+  v8::Local<v8::ArrayBuffer> ab = v8::ArrayBuffer::New(v8::Isolate::GetCurrent(), size);
+  memcpy(ab->Data(), data, size);
+  deleteArray<T>(nullptr, data);
+  return check(node::Buffer::New(v8::Isolate::GetCurrent(), ab, 0, size));
 }
 
 // =======================================================================================

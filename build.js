@@ -171,8 +171,8 @@ let buildEnvironment = Object.assign({}, process.env);
 if (process.platform === "linux" && args.targetPlatform === "linux") {
   buildEnvironment.CC = "clang";
   buildEnvironment.CXX = "clang++";
-  buildEnvironment.CFLAGS = "-I" + capnpIncPath;
-  buildEnvironment.CXXFLAGS = buildEnvironment.CFLAGS;
+  buildEnvironment.CFLAGS = "-I" + capnpIncPath ;
+  buildEnvironment.CXXFLAGS = buildEnvironment.CFLAGS + " -std=c++20";
   buildEnvironment.LDFLAGS = "-L" + capnpLibPath;
 }
 
