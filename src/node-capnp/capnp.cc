@@ -1272,17 +1272,11 @@ kj::Maybe<kj::ArrayPtr<const byte>> unwrapBuffer(v8::Local<v8::Value> value) {
   kj::ArrayPtr<const byte>& name = KJ_ASSERT_NONNULL(name##_maybe)
 
 template <typename T>
-void deleteArray(char*, void* hint) {
-  delete reinterpret_cast<kj::Array<T>*>(hint);
-}
-
-template <typename T>
 v8::Local<v8::Value> wrapBuffer(kj::Array<T>&& array) {
   char* data = reinterpret_cast<char*>(array.begin());
   size_t size = array.size() * sizeof(T);
   v8::Local<v8::ArrayBuffer> ab = v8::ArrayBuffer::New(v8::Isolate::GetCurrent(), size);
   memcpy(ab->Data(), data, size);
-  deleteArray<T>(nullptr, data);
   return check(node::Buffer::New(v8::Isolate::GetCurrent(), ab, 0, size));
 }
 
