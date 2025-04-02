@@ -1275,7 +1275,7 @@ template <typename T>
 v8::Local<v8::Value> wrapBuffer(kj::Array<T>&& array) {
   char* data = reinterpret_cast<char*>(array.begin());
   size_t size = array.size() * sizeof(T);
-  // We need to copy the data into a V8 ArrayBuffer since version 21 Electron
+  // We need to copy the data into a V8 ArrayBuffer as since version 21 Electron
   // does not allow externally allocated pointers to be passed to JavaScript.
   // See https://www.electronjs.org/blog/v8-memory-cage
   v8::Local<v8::ArrayBuffer> ab = v8::ArrayBuffer::New(v8::Isolate::GetCurrent(), size);
