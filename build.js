@@ -126,6 +126,9 @@ function buildCapnp() {
 
     buildCapnpResult = childProcess.spawnSync("build-capnp.bat", [], {
       stdio: "inherit",
+      // shell: true is required on Windows since node v20.12.2:
+      // https://nodejs.org/en/blog/vulnerability/april-2024-security-releases-2
+      shell: true
     });
   } else {
     throw new Error(
@@ -259,10 +262,18 @@ function build(buildEnvironment) {
       `Executing ${command} with the following arguments:\n${commandArgs}`
     );
 
-    const nodeGypResult = childProcess.spawnSync(command, commandArgs, {
+    const spawnSyncOptions = {
       stdio: "inherit",
       env: buildEnvironment,
-    });
+    };
+
+    if (process.platform === "win32") {
+      // shell: true is required on Windows since node v20.12.2:
+      // https://nodejs.org/en/blog/vulnerability/april-2024-security-releases-2
+      spawnSyncOptions.shell = true;
+    }
+
+    const nodeGypResult = childProcess.spawnSync(command, commandArgs, spawnSyncOptions);
 
     if (nodeGypResult.error) {
       throw nodeGypResult.error;

@@ -27,11 +27,13 @@ IF NOT EXIST %BUILD_DIR% MKDIR %BUILD_DIR%
 
 PUSHD %BUILD_DIR%
 
+SET CAPNP_FILENAME=capnproto-c++-1.1.0.tar.gz
+
 :: Download and unzip the capnproto source. It's pretty small (1.6 MiB), so this should be fast.
 :: curl.exe and tar.exe come pre-installed from Windows 10 onwards.
-curl.exe -O https://capnproto.org/capnproto-c++-win32-0.10.3.zip || EXIT /B %ERRORLEVEL%
-tar.exe --strip-components=1 -xf capnproto-c++-win32-0.10.3.zip || EXIT /B %ERRORLEVEL%
-DEL capnproto-c++-win32-0.10.3.zip || EXIT /B %ERRORLEVEL%
+curl.exe -O https://capnproto.org/%CAPNP_FILENAME% || EXIT /B %ERRORLEVEL%
+tar.exe --strip-components=1 -xf %CAPNP_FILENAME% || EXIT /B %ERRORLEVEL%
+DEL %CAPNP_FILENAME% || EXIT /B %ERRORLEVEL%
 
 :: Build the library, making sure that the MSVC runtime library is statically linked. Note that
 :: cmake won't respect that setting unless we also enable policy CMP0091.
