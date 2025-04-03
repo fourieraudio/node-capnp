@@ -51,7 +51,7 @@ pushd ${build_dir}
 # Download the capnproto source, if we don't already have it, and then unpack it. It's pretty small
 # (1.6 MiB), so the download should be fast.
 if [[ ! -f "${capnp_filename}" ]]; then
-    curl -O https://capnproto.org/capnproto-c++-1.1.0.tar.gz
+    curl -O "https://capnproto.org/${capnp_filename}"
 fi
 
 tar --strip-components=1 -zxf "${capnp_filename}"
