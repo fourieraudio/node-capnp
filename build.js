@@ -193,7 +193,7 @@ if (process.platform === "linux" && args.targetPlatform === "darwin") {
   }
 
   buildEnvironment.CFLAGS =
-    "-mmacosx-version-min=10.7 -std=c++17 " +
+    "-mmacosx-version-min=10.7 -std=c++20 " +
     "-stdlib=libc++ -I" +
     capnpIncPath;
   buildEnvironment.CXXFLAGS = buildEnvironment.CFLAGS;
