@@ -1272,16 +1272,15 @@ kj::Maybe<kj::ArrayPtr<const byte>> unwrapBuffer(v8::Local<v8::Value> value) {
   kj::ArrayPtr<const byte>& name = KJ_ASSERT_NONNULL(name##_maybe)
 
 template <typename T>
-void deleteArray(char*, void* hint) {
-  delete reinterpret_cast<kj::Array<T>*>(hint);
-}
-
-template <typename T>
-v8::Local<v8::Value> wrapBuffer(kj::Array<T>&& array) {
+v8::Local<v8::Value> copyToNodeBuffer(kj::Array<T>&& array) {
   char* data = reinterpret_cast<char*>(array.begin());
   size_t size = array.size() * sizeof(T);
-  return check(node::Buffer::New(v8::Isolate::GetCurrent(), data, size, &deleteArray<T>,
-                                 new kj::Array<T>(kj::mv(array))));
+  // We need to copy the data into a V8 ArrayBuffer as since version 21 Electron
+  // does not allow externally allocated pointers to be passed to JavaScript.
+  // See https://www.electronjs.org/blog/v8-memory-cage
+  v8::Local<v8::ArrayBuffer> ab = v8::ArrayBuffer::New(v8::Isolate::GetCurrent(), size);
+  memcpy(ab->Data(), data, size);
+  return check(node::Buffer::New(v8::Isolate::GetCurrent(), ab, 0, size));
 }
 
 // =======================================================================================
@@ -2037,7 +2036,7 @@ v8::Local<v8::Value> valueToJs(CapnpContext& context, capnp::DynamicValue::Reade
       } else {
         capnp::MallocMessageBuilder message;
         message.setRoot(value.as<capnp::AnyPointer>());
-        return scope.Escape(wrapBuffer(capnp::messageToFlatArray(message)));
+        return scope.Escape(copyToNodeBuffer(capnp::messageToFlatArray(message)));
       }
     }
   }
@@ -2255,17 +2254,17 @@ void toBytes(const v8::FunctionCallbackInfo<v8::Value>& args) {
         kj::VectorOutputStream output;
         capnp::_::PackedOutputStream packer(output);
         packer.write(words.asBytes().begin(), words.asBytes().size());
-        return wrapBuffer(kj::heapArray(output.getArray()));
+        return copyToNodeBuffer(kj::heapArray(output.getArray()));
       } else {
-        return wrapBuffer(kj::mv(words));
+        return copyToNodeBuffer(kj::mv(words));
       }
     } else if (packed) {
       kj::VectorOutputStream output;
       capnp::writePackedMessage(output, builder.message);
       auto packedMessage = heapArray(output.getArray());
-      return wrapBuffer(kj::mv(packedMessage));
+      return copyToNodeBuffer(kj::mv(packedMessage));
     } else {
-      return wrapBuffer(capnp::messageToFlatArray(builder.message));
+      return copyToNodeBuffer(capnp::messageToFlatArray(builder.message));
     }
   });
 }

@@ -32,7 +32,7 @@ here=$(cd "$(dirname "$BASH_SOURCE")"; \
 # We store all of our build artefacts in a subdirectory. If that directory already exists, remove
 # it so that we can cleanly restart from scratch. Preserve the capnproto source distribution if
 # it's present, so that we don't need to redownload it.
-capnp_filename="capnproto-c++-0.10.3.tar.gz"
+capnp_filename="capnproto-c++-1.1.0.tar.gz"
 build_dir="${here}/build-capnp"
 
 if [[ -f "${build_dir}/${capnp_filename}" ]]; then
@@ -51,7 +51,7 @@ pushd ${build_dir}
 # Download the capnproto source, if we don't already have it, and then unpack it. It's pretty small
 # (1.6 MiB), so the download should be fast.
 if [[ ! -f "${capnp_filename}" ]]; then
-    curl -O https://capnproto.org/capnproto-c++-0.10.3.tar.gz
+    curl -O "https://capnproto.org/${capnp_filename}"
 fi
 
 tar --strip-components=1 -zxf "${capnp_filename}"
@@ -63,7 +63,7 @@ if [[ $1 == "linux" ]]; then
     CC="clang" \
         CXX="clang++" \
         CFLAGS="-fPIC" \
-        CXXFLAGS="-std=c++17 -fPIC" \
+        CXXFLAGS="-std=c++20 -fPIC" \
         ./configure --disable-shared
     make -j
     make install-data DESTDIR=capnp-root

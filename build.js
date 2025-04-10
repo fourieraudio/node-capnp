@@ -126,6 +126,9 @@ function buildCapnp() {
 
     buildCapnpResult = childProcess.spawnSync("build-capnp.bat", [], {
       stdio: "inherit",
+      // shell: true is required on Windows since node v20.12.2:
+      // https://nodejs.org/en/blog/vulnerability/april-2024-security-releases-2
+      shell: true
     });
   } else {
     throw new Error(
@@ -172,7 +175,7 @@ if (process.platform === "linux" && args.targetPlatform === "linux") {
   buildEnvironment.CC = "clang";
   buildEnvironment.CXX = "clang++";
   buildEnvironment.CFLAGS = "-I" + capnpIncPath;
-  buildEnvironment.CXXFLAGS = buildEnvironment.CFLAGS;
+  buildEnvironment.CXXFLAGS = buildEnvironment.CFLAGS + " -std=c++20";
   buildEnvironment.LDFLAGS = "-L" + capnpLibPath;
 }
 
@@ -190,7 +193,7 @@ if (process.platform === "linux" && args.targetPlatform === "darwin") {
   }
 
   buildEnvironment.CFLAGS =
-    "-mmacosx-version-min=10.7 -std=c++17 " +
+    "-mmacosx-version-min=10.7 -std=c++20 " +
     "-stdlib=libc++ -I" +
     capnpIncPath;
   buildEnvironment.CXXFLAGS = buildEnvironment.CFLAGS;
@@ -259,10 +262,18 @@ function build(buildEnvironment) {
       `Executing ${command} with the following arguments:\n${commandArgs}`
     );
 
-    const nodeGypResult = childProcess.spawnSync(command, commandArgs, {
+    const spawnSyncOptions = {
       stdio: "inherit",
       env: buildEnvironment,
-    });
+    };
+
+    if (process.platform === "win32") {
+      // shell: true is required on Windows since node v20.12.2:
+      // https://nodejs.org/en/blog/vulnerability/april-2024-security-releases-2
+      spawnSyncOptions.shell = true;
+    }
+
+    const nodeGypResult = childProcess.spawnSync(command, commandArgs, spawnSyncOptions);
 
     if (nodeGypResult.error) {
       throw nodeGypResult.error;
@@ -335,7 +346,7 @@ function moveBuildResult(builtPath, buildEnvironment) {
  * @param target - The target binary to be modified
  */
 function patchLibs(patchTool, patchPath, target) {
-  var libVersion = "0.10.3";
+  var libVersion = "1.1.0";
   var libExt = "so";
   var libs = ["libkj", "libkj-async", "libcapnp", "libcapnpc", "libcapnp-rpc"];
 
