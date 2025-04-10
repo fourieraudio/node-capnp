@@ -346,7 +346,7 @@ function moveBuildResult(builtPath, buildEnvironment) {
  * @param target - The target binary to be modified
  */
 function patchLibs(patchTool, patchPath, target) {
-  var libVersion = "0.10.3";
+  var libVersion = "1.1.0";
   var libExt = "so";
   var libs = ["libkj", "libkj-async", "libcapnp", "libcapnpc", "libcapnp-rpc"];
 
