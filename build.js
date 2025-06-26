@@ -75,7 +75,8 @@ const hostAndTargetSupported =
   (process.platform === "linux" && args.targetPlatform === "linux") ||
   (process.platform === "linux" && args.targetPlatform === "darwin") ||
   (process.platform === "linux" && args.targetPlatform === "win32") ||
-  (process.platform === "win32" && args.targetPlatform === "win32");
+  (process.platform === "win32" && args.targetPlatform === "win32") ||
+  (process.platform === "darwin" && args.targetPlatform === "darwin");
 
 if (!hostAndTargetSupported) {
   console.error(
@@ -105,7 +106,6 @@ function buildCapnp() {
         `Unexpected target ${args.targetPlatform} when building on a Linux host.`
       );
     }
-
     buildCapnpResult = childProcess.spawnSync(
       "./build-capnp.sh",
       [args.targetPlatform, args.targetArch],
@@ -130,6 +130,24 @@ function buildCapnp() {
       // https://nodejs.org/en/blog/vulnerability/april-2024-security-releases-2
       shell: true
     });
+  } else if (process.platform === "darwin") {
+    /*
+    Build the capnp library on Darwin.
+    */
+
+    if (args.targetPlatform !== "darwin" && args.targetPlatform !== "darwin") {
+      throw new Error(
+        `Unexpected target ${args.targetPlatform} when building on a Darwin host.`
+      );
+    }
+
+    buildCapnpResult = childProcess.spawnSync(
+      "./build-capnp-darwin.sh",
+      [args.targetPlatform, args.targetArch],
+      {
+        stdio: "inherit",
+      }
+    );
   } else {
     throw new Error(
       `Unexpected host platform ${process.platform}; expected linux or win32.`
@@ -156,6 +174,10 @@ if (process.platform === "linux") {
   capnpLibPath = path.resolve("./build-capnp/.libs");
   capnpIncPath = path.resolve("./build-capnp/src/");
   patchLibPath = undefined; // Unused, since we don't support win32->darwin builds
+} else if (process.platform === "darwin") {
+  capnpLibPath = path.resolve("./build-capnp/.libs");
+  capnpIncPath = path.resolve("./build-capnp/src/");
+  patchLibPath = ".libs";
 } else {
   throw new Error(
     `Building on platform ${JSON.stringify(
@@ -177,6 +199,31 @@ if (process.platform === "linux" && args.targetPlatform === "linux") {
   buildEnvironment.CFLAGS = "-I" + capnpIncPath;
   buildEnvironment.CXXFLAGS = buildEnvironment.CFLAGS + " -std=c++20";
   buildEnvironment.LDFLAGS = "-L" + capnpLibPath;
+}
+
+if (process.platform === "darwin" && args.targetPlatform === "darwin") {
+  if (args.targetArch === "x64") {
+    buildEnvironment.CC = "o64-clang";
+    buildEnvironment.CXX = "o64-clang++";
+    buildEnvironment.PATCH_TOOL = "x86_64-apple-darwin20.4-install_name_tool";
+  } else if (args.targetArch == "arm64") {
+    buildEnvironment.CC = "clang";
+    buildEnvironment.CFLAGS = "-I" + capnpIncPath;
+    buildEnvironment.CXXFLAGS = buildEnvironment.CFLAGS + " -std=c++20";
+    buildEnvironment.LDFLAGS = "-L" + capnpLibPath;
+    buildEnvironment.CXX = "clang++";
+    buildEnvironment.PATCH_TOOL = "install_name_tool";
+  } else {
+      throw new Error(`Bad target architecture ${args.targetArch} for darwin cross-compilation`);
+  }
+
+  buildEnvironment.CFLAGS =
+    "-mmacosx-version-min=10.7 -std=c++20 " +
+    "-stdlib=libc++ -I" +
+    capnpIncPath;
+  buildEnvironment.CXXFLAGS = buildEnvironment.CFLAGS;
+  buildEnvironment.LDFLAGS = "-L" + capnpLibPath;
+
 }
 
 if (process.platform === "linux" && args.targetPlatform === "darwin") {
@@ -347,11 +394,18 @@ function moveBuildResult(builtPath, buildEnvironment) {
  */
 function patchLibs(patchTool, patchPath, target) {
   var libVersion = "1.1.0";
-  var libExt = "so";
+  var libExt = process.platform === "darwin" ? "dylib" : "so";
   var libs = ["libkj", "libkj-async", "libcapnp", "libcapnpc", "libcapnp-rpc"];
 
   var patchArgs = libs
     .flatMap((lib) => {
+      if (process.platform === "darwin") {
+        return [
+          "-change",
+          `/usr/local/lib/${lib}-${libVersion}.${libExt}`,
+          `./.libs/${lib}-${libVersion}.dylib`,
+        ];
+      }
       return [
         "-change",
         `${patchPath}/${lib}-${libVersion}.${libExt}`,
