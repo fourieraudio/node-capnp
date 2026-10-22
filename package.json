@@ -22,7 +22,7 @@
   "types": "src/node-capnp/capnp.d.ts",
   "scripts": {
     "install": "node ./build.js --dist-url=https://electronjs.org/headers --target=45.0.0",
-    "test": "electron src/node-capnp/capnp-test.js"
+    "test": "electron --no-sandbox src/node-capnp/capnp-test.js"
   },
   "dependencies": {
     "nan": "^2.23.0",
