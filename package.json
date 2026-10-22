@@ -30,7 +30,7 @@
   },
   "devDependencies": {
     "electron": "^45.0.0",
-    "node-gyp": "^13.1.0"
+    "node-gyp": "^11.2.0"
   },
   "repository": {
     "type": "git",
@@ -41,6 +41,6 @@
   },
   "license": "MIT",
   "volta": {
-    "node": "24.22.0"
+    "node": "22.14.0"
   }
 }
