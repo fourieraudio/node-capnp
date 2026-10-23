@@ -39,8 +39,5 @@
   "engines": {
     "node": ">=10.0"
   },
-  "license": "MIT",
-  "volta": {
-    "node": "22.14.0"
-  }
+  "license": "MIT"
 }
